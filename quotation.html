@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>智能报价单</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+        body {
+            background: #eef2f7;
+            margin: 0;
+            padding: 16px;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            .no-print {
+                display: none;
+            }
+            .product-sidebar {
+                display: none;
+            }
+            .action-buttons {
+                display: none;
+            }
+            #printArea {
+                margin: 0;
+                padding: 20px;
+            }
+        }
+
+        .quotation-app {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* 侧边栏样式 */
+        .product-sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 300px;
+            background: white;
+            box-shadow: 1px 0 8px rgba(0,0,0,0.1);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+        }
+        .product-sidebar.open {
+            transform: translateX(0);
+        }
+        .sidebar-toggle {
+            position: fixed;
+            left: 16px;
+            top: 16px;
+            background: #1e3a5f;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.2);
+            z-index: 999;
+            display: none;
+        }
+        .sidebar-overlay.show {
+            display: block;
+        }
+        .product-sidebar .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            border-left: 4px solid #2c6e9e;
+            padding-left: 12px;
+        }
+        .product-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .product-card {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .product-card-img {
+            width: 56px;
+            height: 56px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .product-card-info {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+        .product-card-name {
+            font-weight: 700;
+        }
+        .add-btn {
+            background: #1e3a5f;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        .manage-link {
+            margin-top: 16px;
+            text-align: center;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            margin-left: 0;
+        }
+
+        /* 公司信息行 - 无框，仅文本居中 */
+        .company-row {
+            text-align: center;
+            margin-bottom: 0px;
+        }
+        .company-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: inline-block;
+            white-space: pre-wrap;
+            margin-top: 15px;
+        }
+        .company-details {
+            font-size: 0.9rem;
+            text-align: center;
+            display: inline-block;
+            white-space: pre-wrap;
+        }
+        .quotation-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 0px 0 0px 0;
+            display: block;
+            white-space: pre-wrap; 
+        }
+
+        /* 客户信息 - 纯文本无框 */
+        .customer-info {
+            margin-bottom: 0px;
+            padding-left: 16px;
+        }
+        .customer-row {
+            margin-bottom: 2px;
+            display: flex;
+            align-items: baseline;
+            gap: 1px;
+            font-size: 0.85rem;
+        }
+        .customer-label {
+            font-weight: 600;
+            min-width: 70px;
+            color: #000000;
+            white-space: pre-wrap;
+        }
+        .customer-value {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 0;
+            outline: none;
+            font-size: 0.85rem;
+        }
+        .thanks-text {
+            margin-top: 8px;
+            font-style: italic;
+            color: #4b5563;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        /* 报价单表格 */
+        /* 报价单表格 */
+        .quotation-panel {
+            background: rgb(255, 255, 255);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .quote-table-wrapper {
+            overflow-x: auto;
+        }
+        .quote-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            
+        }
+        .quote-table th, .quote-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 4px;
+            vertical-align: middle;
+            text-align: center;
+            word-break: break-word;   /* 强制换行 */
+            overflow-wrap: break-word;
+        }
+        .quote-table th {
+            background: #4a8cce;
+            font-weight: 600;
+            color: #ffffff;
+            white-space: nowrap;
+            font-size: 0.95rem;
+        }
+
+        /* 各列宽度百分比（共10列，第10列操作列在截图时会被隐藏，这里预先设为0） */
+        .quote-table th:nth-child(1), .quote-table td:nth-child(1) { width: 5%; }   /* 序号 */
+        .quote-table th:nth-child(2), .quote-table td:nth-child(2) { width: 10%; }  /* 产品名称 */
+        .quote-table th:nth-child(3), .quote-table td:nth-child(3) { width: 10%; }  /* 品牌/型号 */
+        .quote-table th:nth-child(4), .quote-table td:nth-child(4) { width: 10%; }   /* 图片 */
+        .quote-table th:nth-child(5), .quote-table td:nth-child(5) { width: 18%; }  /* 描述（原配置列） */
+        .quote-table th:nth-child(6), .quote-table td:nth-child(6) { width: 5%; }   /* 数量 */
+        .quote-table th:nth-child(7), .quote-table td:nth-child(7) { width: 12%; }  /* 单价 */
+        .quote-table th:nth-child(8), .quote-table td:nth-child(8) { width: 10%; }  /* 小计 */
+        .quote-table th:nth-child(9), .quote-table td:nth-child(9) { width: 15%; }  /* 备注 */
+        .quote-table th:nth-child(10), .quote-table td:nth-child(10) { width: 5%;  } /* 操作列（完全隐藏） */
+        .product-img-large {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .qty-input {
+            width: 60px;
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+        }
+        .config-editable, .remark-editable {
+            width: 100%;
+            background-color: #f9fafb;
+            padding: 6px;
+            border-radius: 8px;
+            min-height: 40px;
+            text-align: left;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            font-size: 0.75rem;
+            font-family: inherit;
+            outline: none;
+            cursor: text;
+            box-sizing: border-box;
+        }
+        .config-editable:focus, .remark-editable:focus {
+            background-color: #fff9e6;
+        }
+        .delete-row {
+            background: none;           /* 移除背景色 */
+            border: none;               /* 移除边框 */
+            padding: 0;                 /* 移除内边距 */
+            margin: 0;                  /* 移除外边距 */
+            cursor: pointer;            /* 保持手指光标 */
+            font-size: 1.2rem;          /* 适当放大图标，可按需调整 */
+            color: #b91c1c;             /* 图标颜色（可选红色） */
+            transition: opacity 0.2s;
+        }
+        .delete-row:hover {
+            opacity: 0.7;               /* 悬停时半透明，提供反馈 */
+        }
+        /* 报价单说明区域 */
+        .quote-footer {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 16px;
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        .action-buttons {
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;   /* 改为垂直排列 */
+            align-items: flex-end;    /* 按钮靠右对齐 */
+            gap: 8px;
+        }
+
+        /* 可选：为按钮统一宽度，使排列更整齐 */
+        .action-buttons .btn {
+            min-width: 120px;
+            text-align: center;
+        }
+        .btn {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: none;
+            background: #e2e8f0;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn-primary {
+            background: #1e3a5f;
+            color: white;
+        }
+        [contenteditable="true"] {
+            outline: none;
+        }
+        [contenteditable="true"]:hover {
+            background: #fff9e6;
+        }
+        /* 截图区域 */
+       
+        #printArea {
+            width: 794px;               /* 对应 A4 宽度 210mm @ 96DPI */
+            min-height: 1123px;         /* 对应 A4 高度 297mm @ 96DPI，内容超出则自动增高 */
+            margin: 0 auto;
+            background: white;
+            box-sizing: border-box;
+        }
+        @media (max-width: 640px) {
+            .product-sidebar {
+                width: 260px;
+            }
+            .quote-table th, .quote-table td {
+                font-size: 0.7rem;
+                padding: 4px 2px;
+            }
+            .product-img-large {
+                width: 48px;
+                height: 48px;
+            }
+            .quote-table th:nth-child(5),
+            .quote-table td:nth-child(5),
+            .quote-table th:nth-child(9),
+            .quote-table td:nth-child(9) {
+                width: 140px;
+                max-width: 140px;
+            }
+            .config-editable, .remark-editable {
+                font-size: 0.7rem;
+            }
+        }
+        /* 自定义模态框样式 */
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 2000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .modal-container {
+                background: white;
+                border-radius: 5px;
+                padding: 20px 24px;
+                max-width: 600px;
+                width: 90%;
+                max-height: 60vh;      /* 限制高度为视口高度的70% */
+                overflow-y: auto;      /* 内容过多时显示滚动条 */
+                box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+            }
+            .modal-container h3 {
+                margin-top: 0;
+                margin-bottom: 16px;
+            }
+            .record-list {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+            .record-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .record-info {
+                flex: 1;
+                font-size: 0.9rem;
+            }
+            .record-actions button {
+                margin-left: 8px;
+                padding: 4px 12px;
+                border-radius: 20px;
+                border: none;
+                cursor: pointer;
+            }
+            .btn-load {
+                background: #1e3a5f;
+                color: white;
+            }
+            .btn-delete {
+                background: #fee2e2;
+                color: #b91c1c;
+            }
+            .modal-close {
+                margin-top: 16px;
+                text-align: right;
+            }
+            .modal-close button {
+                background: #e2e8f0;
+                border: none;
+                padding: 6px 16px;
+                border-radius: 20px;
+                cursor: pointer;
+            }
+            /* 模态框自定义滚动条（Webkit 内核） */
+            .modal-container::-webkit-scrollbar {
+                width: 6px;
+            }
+            .modal-container::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 10px;
+            }
+            .modal-container::-webkit-scrollbar-thumb {
+                background: #cbd5e6;
+                border-radius: 10px;
+            }
+            .modal-container::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+            /* 拖动按钮时的光标 */
+        .sidebar-toggle {
+            cursor: move;          /* 提示可拖动 */
+            user-select: none;     /* 避免拖动时选中文字 */
+        }
+
+        /* 表头下拉框样式 */
+        #priceTypeSwitch {
+            background-color: #4a8cce;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        #priceTypeSwitch option {
+            background-color: white;
+            color: #1e3a5f;
+        }
+
+        /* 价格输入框样式与数量输入框一致 */
+        .price-input {
+            width: 60px;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-family: inherit;
+            font-size: 0.85rem;
+            outline: none;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        .price-input::-webkit-inner-spin-button,
+        .price-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .price-input:hover {
+        background-color: rgba(0,0,0,0.05); /* 浅灰色背景，表示可编辑 */
+        }
+        .price-input:focus {
+            background-color: #fff9e6;          /* 聚焦时浅黄色背景，提醒用户正在编辑 */
+            border: 1px solid #ffd966;          /* 聚焦时显示淡黄色边框，方便定位（可选） */
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-container {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .quotation-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;  /* 可选：整体居中，使表格在页面中央 */
+            flex-wrap: wrap;          /* 窄屏时自动换行，避免溢出 */
+        }
+
+        
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 130px;             /* 按钮区域固定宽度 */
+            margin-top: 0;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            text-align: center;
+            padding: 8px 12px;
+            box-sizing: border-box;
+        }
+        /* 产品库列表滚动条美化 */
+        .product-sidebar .product-list {
+            overflow-y: auto;
+            scrollbar-width: none;   /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        .product-sidebar .product-list::-webkit-scrollbar {
+            display: none;           /* Chrome/Safari */
+        }
+        .product-sidebar .product-list,
+        .quote-table-wrapper,
+        .modal-container {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .product-sidebar .product-list::-webkit-scrollbar,
+        .quote-table-wrapper::-webkit-scrollbar,
+        .modal-container::-webkit-scrollbar {
+            display: none;
+        }
+        /* 可拖拽的悬浮按钮面板 */
+        /* 悬浮按钮面板容器 */
+        .floating-actions {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: move;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* 让按钮在右侧展开 */
+        }
+
+        /* 齿轮按钮 */
+        .floating-toggle {
+            width: 48px;
+            height: 48px;
+            background: #1e3a5f;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background 0.2s;
+            z-index: 1001;
+        }
+        .floating-toggle:hover {
+            background: #2c6e9e;
+            transform: scale(1.05);
+        }
+
+        /* 按钮面板（默认隐藏） */
+        .action-buttons {
+            position: absolute;
+            top: 100%;           /* 位于齿轮下方 */
+            left: 0;            /* 右侧对齐 */
+            margin-top: 8px;
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            width: 160px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+        }
+        .action-buttons.show {
+            display: flex;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            text-align: center;
+            padding: 8px 12px;
+            box-sizing: border-box;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .action-buttons .btn:hover {
+            background: #cbd5e1;
+        }
+        .action-buttons .btn-primary {
+            background: #1e3a5f;
+            color: white;
+        }
+        .action-buttons .btn-primary:hover {
+            background: #2c6e9e;
+        }
+        .customer-value {
+        display: inline-block;
+        min-width: 80px;
+        min-height: 1.2em;
+        cursor: text;
+    }
+    .quote-footer {
+    margin-top: 20px;
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    }
+    .quote-footer-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .quote-person, .customer-sign {
+        font-size: 0.85rem;
+    }
+    .quote-person {
+        /* 确保左侧内容不压缩，右侧自动靠右 */
+        flex: 1;
+    }
+    .customer-sign {
+        text-align: right;
+        white-space: nowrap;
+    }
+    </style>
+</head>
+<body>
+<div class="quotation-app">
+    <button class="sidebar-toggle no-print" id="sidebarToggleBtn">📦 产品库</button>
+
+    <div class="product-sidebar" id="productSidebar">
+        <div class="section-title">📦 产品库 (一键选择)</div>
+        <div id="productLibraryList" class="product-list"></div>
+        <div class="manage-link">
+            <button class="btn" id="manageProductBtn">✏️ 管理产品库</button>
+        </div>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="main-content">
+    <div class="quotation-layout">
+        <div id="printArea">
+            <!-- 1. 公司信息 -->
+            <div class="company-row">
+                <div contenteditable="true" id="companyName" class="company-name">广州天冀图晟电子有限公司</div>
+            </div>
+            <div class="company-row">
+                <div contenteditable="true" id="companyDetails" class="company-details">
+    地址:广东省广州市番禺区市新路恒然创意园A座1209-1210   业务联系人：梁小姐  13416314349
+                </div>
+            </div>
+            <div contenteditable="true" id="quotationTitle" class="quotation-title">报        价        单</div>
+
+            <!-- 2. 客户信息 -->
+            <div class="customer-info">
+                <div class="customer-row">
+                    <span class="customer-label">客户名称：</span>
+                    <span contenteditable="true" id="customerName" class="customer-value"></span>
+                </div>
+                <div class="customer-row" style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <div style="display: flex; gap: 1px; align-items: baseline;">
+                        <span class="customer-label">联  系  人:</span>
+                        <div contenteditable="true" id="contactPerson" class="customer-value"></div>
+                    </div>
+                    <span contenteditable="true" id="quoteDate" style="font-style: normal; color: #000000; margin-right: 16px;"></span>
+                </div>
+                <div class="customer-row">
+                    <span class="customer-label">地       址：</span>
+                    <span contenteditable="true" id="customerAddr" class="customer-value"></span>
+                </div>
+                <div class="thanks-text" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>感谢您对本公司的信任，以下是我们为您提供的报价，请您参考：</span>
+                    
+                </div>
+            </div>
+
+            <!-- 3. 报价单表格 -->
+            <div class="quotation-panel">
+                <div class="quote-table-wrapper">
+                    <table class="quote-table" id="quoteTable">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>产品名称</th>
+                                <th>品牌/型号</th>
+                                <th>图片</th>
+                                <th>描述</th>
+                                <th>数量</th>
+                                <th id="priceHeaderCell">
+                                <select id="priceTypeSwitch" style="margin-left: 1px; padding: 2px 4px; font-size: 0.75rem;">
+                                    <option value="tax">含税单价</option>
+                                    <option value="noTax">未税单价</option>
+                                </select>
+                                </th>
+                                <th>小计(¥)</th>
+                                <th>备注</th>
+                                <th>🗑️</th>
+                            </thead>
+                        <tbody id="quoteTableBody"></tbody>
+                    </table>
+                </div>
+                <!-- 4. 合计金额 -->
+                <div style="text-align:right; font-weight:bold; margin-top:8px;">合计金额：¥ <span id="totalAmount">0.00</span></div>
+
+                <!-- 5. 报价单说明 + 签章 -->
+                <div class="quote-footer">
+                    <div><strong>报价单说明：</strong></div>
+                    <div contenteditable="true" id="quotationRemark" class="quotation-remark-editable">
+                        1.以上价格含税;单独发支付板，硬币器、测试卡、线材等配件是不含运费。<br>2.客户在报价单上签字确认后，报价单生效;我们将尽快与您签订发货合同。<br>3.结算方式为现结，款到发货。
+                    </div>
+                    <div class="quote-footer-row">
+                        <div class="quote-person">报价人：<span contenteditable="true" id="quotePerson"></span></div>
+                        <div class="customer-sign">客户(签/章)：__________________</div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. 操作按钮（不包含在截图区域） -->
+        <div class="floating-actions no-print" id="floatingActions" style="position: fixed;">
+            <div class="floating-toggle" id="floatingToggle">⚙️</div>
+            <div class="action-buttons" id="actionButtons">
+            <button class="btn" id="exportFullDataBtn">📦 导出全部数据</button>
+            <button class="btn" id="importFullDataBtn">📥 导入数据</button>           
+            <button class="btn" id="saveQuoteBtn">💾 保存</button>
+            <button class="btn" id="loadQuoteBtn">📂 加载</button>
+            <button class="btn" id="resetQuoteBtn">🗑 重置</button>
+            <button class="btn" id="remarkTemplateBtn">📝 报价单说明</button>
+            <button class="btn btn-primary" id="saveAsImageBtn">📸 保存为图片</button>
+        </div>
+    </div>
+    </div>
+</div>
+
+<script>
+    // ==================== IndexedDB 配置 ====================
+    const DB_NAME = 'QuotationDB';
+    const DB_VERSION = 8;  // 升级版本号，增加新的存储结构
+    const PRODUCT_STORE = 'products';
+    const QUOTE_STORE = 'quotations';
+
+    let currentPriceType = 'tax';   // 'tax' 或 'noTax'
+    let db = null;
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            if (db && db.name === DB_NAME) {
+                resolve(db);
+                return;
+            }
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = () => reject(new Error(`IndexedDB 打开失败: ${request.error?.message || '未知错误'}`));
+            request.onsuccess = () => {
+                db = request.result;
+                resolve(db);
+            };
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                // 创建产品库存储（如果不存在）
+                if (!db.objectStoreNames.contains(PRODUCT_STORE)) {
+                    db.createObjectStore(PRODUCT_STORE, { keyPath: 'id', autoIncrement: true });
+                }
+                // 创建报价单存储（如果不存在）
+                if (!db.objectStoreNames.contains(QUOTE_STORE)) {
+                    db.createObjectStore(QUOTE_STORE, { keyPath: 'id', autoIncrement: true });
+                }
+                if (!db.objectStoreNames.contains('remark_templates')) {
+                    db.createObjectStore('remark_templates', { keyPath: 'id', autoIncrement: true });
+                }
+                // 初始化产品数据（仅当旧版本小于1时）
+                if (event.oldVersion < 1) {
+                    const store = event.target.transaction.objectStore(PRODUCT_STORE);
+                    store.add({
+                        name: "纸钞机",
+                        model: "NV10",
+                        price: 1280,
+                        imageBase64: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d9e3f0'/%3E%3Ctext x='50' y='55' font-size='38' text-anchor='middle' fill='%23365e7e'%3E💰%3C/text%3E%3C/svg%3E"
+                    });
+                    store.add({
+                        name: "点验钞机",
+                        model: "JBY-D2",
+                        price: 2150,
+                        imageBase64: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23c8e6df'/%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' fill='%233d6b5e'%3E💵%3C/text%3E%3C/svg%3E"
+                    });
+                }
+            };
+        });
+    }
+
+    // 获取所有产品
+    async function getAllProducts() {
+        const db = await openDB();
+        const tx = db.transaction(PRODUCT_STORE, 'readonly');
+        const store = tx.objectStore(PRODUCT_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // 保存报价单（新增一条记录）
+    async function saveQuotationToDB(quoteData, fileName) {
+        const db = await openDB();
+        const tx = db.transaction(QUOTE_STORE, 'readwrite');
+        const store = tx.objectStore(QUOTE_STORE);
+        // 添加文件名和保存时间
+        const record = {
+            fileName: fileName,
+            savedAt: new Date().toISOString(),
+            data: quoteData
+        };
+        return new Promise((resolve, reject) => {
+            const request = store.add(record);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // 获取所有保存的报价单列表（用于加载选择）
+    async function getAllQuotationRecords() {
+        const db = await openDB();
+        const tx = db.transaction(QUOTE_STORE, 'readonly');
+        const store = tx.objectStore(QUOTE_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+                // 按保存时间倒序排列
+                const records = request.result.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+                resolve(records);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // 根据 id 加载指定的报价单
+    async function loadQuotationById(id) {
+        const db = await openDB();
+        const tx = db.transaction(QUOTE_STORE, 'readonly');
+        const store = tx.objectStore(QUOTE_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.get(id);
+            request.onsuccess = () => resolve(request.result ? request.result.data : null);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // 删除指定的报价单记录
+    async function deleteQuotationById(id) {
+        const db = await openDB();
+        const tx = db.transaction(QUOTE_STORE, 'readwrite');
+        const store = tx.objectStore(QUOTE_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // ==================== 报价单说明存储 ====================
+    async function saveRemarkToDB(remarkHtml, fileName) {
+        const db = await openDB();
+        const tx = db.transaction('remark_templates', 'readwrite');
+        const store = tx.objectStore('remark_templates');
+        const record = {
+            fileName: fileName,
+            savedAt: new Date().toISOString(),
+            data: remarkHtml
+        };
+        return new Promise((resolve, reject) => {
+            const request = store.add(record);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function getAllRemarks() {
+        const db = await openDB();
+        const tx = db.transaction('remark_templates', 'readonly');
+        const store = tx.objectStore('remark_templates');
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const records = request.result.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+                resolve(records);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function deleteRemarkById(id) {
+        const db = await openDB();
+        const tx = db.transaction('remark_templates', 'readwrite');
+        const store = tx.objectStore('remark_templates');
+        return new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // 保存当前报价单说明
+// 保存当前报价单说明（弹出输入框让用户自定义名称）
+async function saveCurrentRemark() {
+    const remarkHtml = document.getElementById('quotationRemark').innerHTML;
+    if (!remarkHtml.trim()) {
+        alert('报价单说明为空，无需保存');
+        return;
+    }
+
+    // 生成默认文件名（带日期）
+    const now = new Date();
+    const defaultName = `报价说明_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+
+    let fileName = prompt('请输入保存的文件名：', defaultName);
+    if (fileName === null) return;
+
+    fileName = fileName.trim();
+    if (!fileName) {
+        alert('文件名不能为空，已取消保存');
+        return;
+    }
+    fileName = fileName.replace(/[\\/:*?"<>|]/g, '_');
+
+    try {
+        await saveRemarkToDB(remarkHtml, fileName);
+        alert(`报价单说明已保存为：${fileName}`);
+    } catch (err) {
+        console.error(err);
+        alert('保存失败：' + err.message);
+    }
+}
+
+// 加载报价单说明列表（模态框）
+async function loadRemarkFromList() {
+    try {
+        const records = await getAllRemarks();
+        if (records.length === 0) {
+            alert('没有已保存的报价单说明');
+            return;
+        }
+
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-overlay';
+        modalDiv.innerHTML = `
+            <div class="modal-container">
+                <h3>📋 选择要加载的报价单说明</h3>
+                <div style="margin-bottom: 12px; font-size: 0.85rem; color: #666;">
+                    共 ${records.length} 条记录
+                </div>
+                <ul class="record-list" id="recordList"></ul>
+                <div class="modal-close">
+                    <button id="closeModalBtn">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+
+        const listContainer = modalDiv.querySelector('#recordList');
+        const closeBtn = modalDiv.querySelector('#closeModalBtn');
+
+        function renderList() {
+            listContainer.innerHTML = records.map(record => `
+                <li class="record-item" data-id="${record.id}">
+                    <div class="record-info">
+                        <strong>${escapeHtml(record.fileName)}</strong><br>
+                        <small>${new Date(record.savedAt).toLocaleString()}</small>
+                    </div>
+                    <div class="record-actions">
+                        <button class="btn-load" data-id="${record.id}">加载</button>
+                        <button class="btn-delete" data-id="${record.id}">删除</button>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function bindEvents() {
+            listContainer.querySelectorAll('.btn-load').forEach(btn => {
+                btn.removeEventListener('click', loadHandler);
+                btn.addEventListener('click', loadHandler);
+            });
+            listContainer.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.removeEventListener('click', deleteHandler);
+                btn.addEventListener('click', deleteHandler);
+            });
+        }
+
+        const loadHandler = async (e) => {
+            const btn = e.currentTarget;
+            const id = parseInt(btn.dataset.id);
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = '加载中...';
+            try {
+                const record = records.find(r => r.id === id);
+                if (record) {
+                    document.getElementById('quotationRemark').innerHTML = record.data;
+                    alert('加载成功');
+                    modalDiv.remove();
+                } else {
+                    alert('加载失败：记录不存在');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('加载失败：' + err.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        const deleteHandler = async (e) => {
+            const btn = e.currentTarget;
+            const id = parseInt(btn.dataset.id);
+            if (!confirm('确定删除该报价单说明记录吗？')) return;
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = '删除中...';
+            try {
+                await deleteRemarkById(id);
+                const index = records.findIndex(r => r.id === id);
+                if (index !== -1) records.splice(index, 1);
+                if (records.length === 0) {
+                    alert('所有报价单说明已删除');
+                    modalDiv.remove();
+                    return;
+                }
+                renderList();
+                bindEvents();
+                const countSpan = modalDiv.querySelector('.modal-container > div:first-child');
+                if (countSpan) countSpan.textContent = `共 ${records.length} 条记录`;
+            } catch (err) {
+                console.error(err);
+                alert('删除失败：' + err.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        renderList();
+        bindEvents();
+
+        const closeModal = () => modalDiv.remove();
+        closeBtn.addEventListener('click', closeModal);
+        modalDiv.addEventListener('click', (e) => {
+            if (e.target === modalDiv) closeModal();
+        });
+    } catch (err) {
+        console.error(err);
+        alert('加载报价单说明列表失败：' + err.message);
+    }
+}
+
+    // ==================== UI 状态 ====================
+    let products = [];
+    let quoteRows = [];
+    let nextRowId = 1;
+
+    const productListDiv = document.getElementById('productLibraryList');
+    const quoteTableBody = document.getElementById('quoteTableBody');
+    const totalSpan = document.getElementById('totalAmount');
+
+    const sidebar = document.getElementById('productSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+
+    function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+    toggleBtn.style.display = 'none';   // 隐藏按钮
+    }
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+        toggleBtn.style.display = 'flex';    // 恢复按钮（根据原样式设为 flex）
+    } 
+    toggleBtn.addEventListener('click', openSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    // 加载产品库并渲染侧边栏
+    async function loadProducts() {
+        products = await getAllProducts();
+        renderProductSelector();
+    }
+
+    function renderProductSelector() {
+    const fragment = document.createDocumentFragment();
+    products.forEach(prod => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.innerHTML = `
+            <img class="product-card-img" src="${prod.imageBase64}" alt="img">
+            <div class="product-card-info">
+                <div class="product-card-name">${escapeHtml(prod.name)}</div>
+                <div>${escapeHtml(prod.model || '无型号')}</div>
+                <div>¥ ${Number(prod.price).toFixed(2)}</div>
+            </div>
+            <button class="add-btn" data-id="${prod.id}">➕ 选择</button>
+        `;
+        fragment.appendChild(card);
+    });
+    productListDiv.innerHTML = '';
+    productListDiv.appendChild(fragment);
+}
+
+    function addProductToQuote(product) {
+    // 始终新增一行，不检查已存在
+        quoteRows.push({
+            rowId: nextRowId++,
+            productId: product.id,
+            productName: product.name,
+            brandModel: product.model || '',
+            imageBase64: product.imageBase64,
+            taxPrice: product.price,
+            noTaxPrice: product.price,
+            quantity: 1,               // 固定为1
+            config: product.description || '',
+            remark: ''
+        });
+        renderQuoteTable();
+        
+    }
+
+    function renderQuoteTable() {
+    quoteTableBody.innerHTML = '';
+    quoteRows.forEach((row, idx) => {
+        // 根据当前显示类型获取价格
+        const displayPrice = currentPriceType === 'tax' ? row.taxPrice : row.noTaxPrice;
+        const subtotal = displayPrice * row.quantity;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+             <td>${idx+1}</td>
+              <td><strong>${escapeHtml(row.productName)}</strong></td>
+              <td>${escapeHtml(row.brandModel)}</td>
+              <td><img class="product-img-large" src="${row.imageBase64 || ''}" alt="产品图"></td>
+              <td><div contenteditable="true" class="config-editable" data-id="${row.rowId}">${escapeHtml(row.config).replace(/\n/g, '<br>')}</div></td>
+               <td class="qty-display">${row.quantity}</td>
+              <td><input type="number" class="price-input" data-id="${row.rowId}" value="${displayPrice}" step="0.01" min="0" style="width:75px;"></td>
+              <td class="subtotal">${subtotal.toFixed(2)}</td>
+              <td><div contenteditable="true" class="remark-editable" data-id="${row.rowId}">${escapeHtml(row.remark).replace(/\n/g, '<br>')}</div></td>
+              <td><button class="delete-row" data-id="${row.rowId}">🗑️</button></td>
+        `;
+        quoteTableBody.appendChild(tr);
+    });
+
+    // 绑定数量输入框事件
+    document.querySelectorAll('.qty-input').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+            const rid = parseInt(inp.dataset.id);
+            const row = quoteRows.find(r => r.rowId === rid);
+            if (row) {
+                let newQty = parseInt(inp.value);
+                if (isNaN(newQty) || newQty < 1) newQty = 1;
+                row.quantity = newQty;
+                renderQuoteTable();
+                
+            }
+        });
+    });
+
+    // 绑定单价输入框事件
+    document.querySelectorAll('.price-input').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+            const rid = parseInt(inp.dataset.id);
+            const row = quoteRows.find(r => r.rowId === rid);
+            if (row) {
+                let newPrice = parseFloat(inp.value);
+                if (isNaN(newPrice) || newPrice < 0) newPrice = 0;
+                if (currentPriceType === 'tax') {
+                    row.taxPrice = newPrice;
+                } else {
+                    row.noTaxPrice = newPrice;
+                }
+                renderQuoteTable();   // 重新渲染以更新小计
+                
+            }
+        });
+    });
+
+    // 配置编辑事件
+    document.querySelectorAll('.config-editable').forEach(div => {
+        div.addEventListener('input', (e) => {
+            const rid = parseInt(div.dataset.id);
+            const row = quoteRows.find(r => r.rowId === rid);
+            if (row) row.config = div.innerText;
+        });
+    });
+
+    // 备注编辑事件
+    document.querySelectorAll('.remark-editable').forEach(div => {
+        div.addEventListener('input', (e) => {
+            const rid = parseInt(div.dataset.id);
+            const row = quoteRows.find(r => r.rowId === rid);
+            if (row) row.remark = div.innerText;
+        });
+    });
+
+    // 删除行事件
+    document.querySelectorAll('.delete-row').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const rid = parseInt(btn.dataset.id);
+            quoteRows = quoteRows.filter(r => r.rowId !== rid);
+            renderQuoteTable();
+            
+        });
+    });
+
+    updateTotal();
+    }
+
+    function updateTotal() {
+    let total = quoteRows.reduce((sum, row) => {
+        const price = currentPriceType === 'tax' ? row.taxPrice : row.noTaxPrice;
+        return sum + (price * row.quantity);
+    }, 0);
+    totalSpan.innerText = total.toFixed(2);
+}
+
+    
+
+    // 从 IndexedDB 加载报价单
+    async function loadQuoteFromStorage() {
+        const data = await loadQuotationFromDB();
+        if (data) {
+            document.getElementById('companyName').innerText = data.companyName || '广州天冀图晟电子有限公司';
+            document.getElementById('companyDetails').innerText = data.companyDetails || '地址:广东省广州市番禺区市新路恒然创意园A座1209-1210   业务联系人:梁小姐13416314349';
+            document.getElementById('quotationTitle').innerText = data.quotationTitle || '报    价    单';
+            document.getElementById('customerName').innerText = data.customerName || '';
+            document.getElementById('contactPerson').innerText = data.contactPerson || '';
+            document.getElementById('customerAddr').innerText = data.customerAddr || '';
+            document.getElementById('quotationRemark').innerHTML = data.quotationRemark || '1. 报价含13%增值税专用发票<br>2. 交货期：7个工作日<br>3. 质保期：12个月';
+            document.getElementById('quotePerson').innerText = data.quotePerson || '李经理';
+            if (data.rows && Array.isArray(data.rows)) {
+                quoteRows = data.rows;
+                
+                let maxId = 0;
+                quoteRows.forEach(r => { if (r.rowId > maxId) maxId = r.rowId; });
+                nextRowId = maxId + 1;
+                renderQuoteTable();
+            } else {
+                quoteRows = [];
+                nextRowId = 1;
+                renderQuoteTable();
+            }
+        } else {
+            alert('没有已保存的报价单');
+        }
+    }
+
+    // 获取当前报价单数据对象
+    function getCurrentQuoteData() {
+        return {
+            companyName: document.getElementById('companyName').innerText,
+            companyDetails: document.getElementById('companyDetails').innerText,
+            quotationTitle: document.getElementById('quotationTitle').innerText,
+            customerName: document.getElementById('customerName').innerText,
+            contactPerson: document.getElementById('contactPerson').innerText,
+            customerAddr: document.getElementById('customerAddr').innerText,
+            quotationRemark: document.getElementById('quotationRemark').innerHTML,
+            quotePerson: document.getElementById('quotePerson').innerText,
+            quoteDate: document.getElementById('quoteDate').innerText,
+            rows: quoteRows,
+            priceType: currentPriceType,
+            lastUpdate: new Date().toISOString()
+        };
+    }
+
+    // 应用报价单数据到页面
+    function applyQuoteData(data) {
+        document.getElementById('companyName').innerText = data.companyName || '广州天冀图晟电子有限公司';
+        document.getElementById('companyDetails').innerText = data.companyDetails || '地址:广东省广州市番禺区市新路恒然创意园A座1209-1210 业务联系人:梁小姐13416314349';
+        document.getElementById('quotationTitle').innerText = data.quotationTitle || '报     价     单';
+        document.getElementById('customerName').innerText = data.customerName || '';
+        document.getElementById('contactPerson').innerText = data.contactPerson || '';
+        document.getElementById('customerAddr').innerText = data.customerAddr || '';
+        document.getElementById('quotationRemark').innerHTML = data.quotationRemark || '1. 报价含13%增值税专用发票<br>2. 交货期：7个工作日<br>3. 质保期：12个月';
+        document.getElementById('quotePerson').innerText = data.quotePerson || '李经理';
+        if (data.priceType) {
+    currentPriceType = data.priceType;
+    document.getElementById('priceTypeSwitch').value = currentPriceType;
+        }
+        if (data.rows && Array.isArray(data.rows)) {
+            quoteRows = data.rows.map(row => ({
+                ...row,
+                taxPrice: row.taxPrice !== undefined ? row.taxPrice : row.unitPrice,   // 兼容旧数据
+                noTaxPrice: row.noTaxPrice !== undefined ? row.noTaxPrice : row.unitPrice
+            }));
+            let maxId = 0;
+            quoteRows.forEach(r => { if (r.rowId > maxId) maxId = r.rowId; });
+            nextRowId = maxId + 1;
+            renderQuoteTable();
+        } else {
+            quoteRows = [];
+            nextRowId = 1;
+            renderQuoteTable();
+        }
+        if (data.quoteDate) {
+            document.getElementById('quoteDate').innerText = data.quoteDate;
+        } else {
+            // 如果没有保存的日期，则显示当天
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+            document.getElementById('quoteDate').innerText = `${year}年${month}月${day}日`;
+        }
+    }
+
+    // 保存功能：生成文件名并保存
+    async function saveCurrentQuote() {
+         if (!quoteRows || quoteRows.length === 0) {
+            alert('没有数据可保存，请先添加产品。');
+            return;
+        }
+        try {
+            const data = getCurrentQuoteData();
+            let customerName = data.customerName.trim();
+            if (!customerName) customerName = '未命名客户';
+            customerName = customerName.replace(/[\\/:*?"<>|]/g, '_');
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+            const fileName = `${customerName}_${timestamp}`;
+            await saveQuotationToDB(data, fileName);
+            alert(`报价单已保存为：${fileName}`);
+        } catch (err) {
+            console.error(err);
+            alert('保存失败：' + err.message);
+        }
+    }
+
+    // 加载功能：弹出列表选择
+        let isLoadModalOpen = false;
+        async function loadQuoteFromList() {
+    if (isLoadModalOpen) return;
+
+    try {
+        const records = await getAllQuotationRecords();
+        if (records.length === 0) {
+            alert('没有已保存的报价单');
+            return;
+        }
+
+        isLoadModalOpen = true;
+
+        // 创建模态框
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-overlay';
+        modalDiv.innerHTML = `
+            <div class="modal-container">
+                <h3>📋 选择要加载的报价单</h3>
+                <div style="margin-bottom: 12px; font-size: 0.85rem; color: #666;">
+                    共 ${records.length} 条记录
+                </div>
+                <ul class="record-list" id="recordList"></ul>
+                <div class="modal-close">
+                    <button id="closeModalBtn">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+
+        const listContainer = modalDiv.querySelector('#recordList');
+        const closeBtn = modalDiv.querySelector('#closeModalBtn');
+
+        // 渲染列表
+        function renderList() {
+            listContainer.innerHTML = records.map(record => `
+                <li class="record-item" data-id="${record.id}">
+                    <div class="record-info">
+                        <strong>${escapeHtml(record.fileName)}</strong><br>
+                        <small>${new Date(record.savedAt).toLocaleString()}</small>
+                    </div>
+                    <div class="record-actions">
+                        <button class="btn-load" data-id="${record.id}">加载</button>
+                        <button class="btn-delete" data-id="${record.id}">删除</button>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        // 关闭模态框
+        const closeModal = () => {
+            modalDiv.remove();
+            isLoadModalOpen = false;
+        };
+
+        // 绑定事件
+        function bindEvents() {
+            // 加载按钮
+            listContainer.querySelectorAll('.btn-load').forEach(btn => {
+                btn.removeEventListener('click', loadHandler);
+                btn.addEventListener('click', loadHandler);
+            });
+            // 删除按钮
+            listContainer.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.removeEventListener('click', deleteHandler);
+                btn.addEventListener('click', deleteHandler);
+            });
+        }
+
+        // 加载事件处理器
+        const loadHandler = async (e) => {
+            const btn = e.currentTarget;
+            const id = parseInt(btn.dataset.id);
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = '加载中...';
+            try {
+                const data = await loadQuotationById(id);
+                if (data) {
+                    applyQuoteData(data);
+                    alert('加载成功');
+                    closeModal();
+                } else {
+                    alert('加载失败：数据为空');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('加载失败：' + err.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        // 删除事件处理器
+        const deleteHandler = async (e) => {
+            const btn = e.currentTarget;
+            const id = parseInt(btn.dataset.id);
+            if (!confirm('确定删除该报价单记录吗？')) return;
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = '删除中...';
+            try {
+                // 先从数据库删除
+                await deleteQuotationById(id);
+                // 刷新本地记录数组
+                const index = records.findIndex(r => r.id === id);
+                if (index !== -1) records.splice(index, 1);
+                // 如果删除后列表为空，关闭模态框
+                if (records.length === 0) {
+                    alert('所有报价单已删除');
+                    closeModal();
+                    return;
+                }
+                // 重新渲染列表
+                renderList();
+                // 更新记录数显示
+                const countSpan = modalDiv.querySelector('.modal-container > div:first-child');
+                if (countSpan) countSpan.textContent = `共 ${records.length} 条记录`;
+                // 重新绑定事件（因为 DOM 重新生成）
+                bindEvents();
+            } catch (err) {
+                console.error(err);
+                alert('删除失败：' + err.message);
+                // 如果删除失败，重新获取最新数据刷新列表
+                const freshRecords = await getAllQuotationRecords();
+                records.length = 0;
+                records.push(...freshRecords);
+                renderList();
+                bindEvents();
+                const countSpan = modalDiv.querySelector('.modal-container > div:first-child');
+                if (countSpan) countSpan.textContent = `共 ${records.length} 条记录`;
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        renderList();
+        bindEvents();
+
+        closeBtn.addEventListener('click', closeModal);
+        modalDiv.addEventListener('click', (e) => {
+            if (e.target === modalDiv) closeModal();
+        });
+
+    } catch (err) {
+        console.error(err);
+        alert('加载报价单列表失败：' + err.message);
+        isLoadModalOpen = false;
+    }
+}
+
+    // 重置功能（与之前相同）
+    function resetQuote() {
+        if (confirm('重置将清空所有报价产品行和客户信息，是否继续？')) {
+            quoteRows = [];
+            nextRowId = 1;
+            document.getElementById('customerName').innerText = '';
+            document.getElementById('contactPerson').innerText = '';
+            document.getElementById('customerAddr').innerText = '';
+            document.getElementById('quotationRemark').innerHTML = '1. 报价含13%增值税专用发票<br>2. 交货期：7个工作日<br>3. 质保期：12个月';
+            document.getElementById('quotePerson').innerText = '李经理';
+            renderQuoteTable();
+        }
+    }
+
+    // 保存为图片（截图时隐藏操作列，配置/备注/数量转纯文本）
+    async function saveAsImage() {
+        await saveCurrentQuoteSilent();
+    const element = document.getElementById('printArea');
+    if (!element) {
+        alert('未找到截图区域');
+        return;
+    }
+
+    const style = document.createElement('style');
+    style.id = 'temp-screenshot-style';
+    style.textContent = `
+        .quote-table th:nth-child(10),
+        .quote-table td:nth-child(10) {
+            display: none !important;
+        }
+    `;
+
+    let originalCells = [];
+    let originalSelectDisplay = null;
+    let tempSpan = null;
+
+    try {
+        const overlay = document.querySelector('.sidebar-overlay');
+        if (overlay) overlay.style.display = 'none';
+
+        // 处理表头下拉框
+        const priceTypeSelect = document.getElementById('priceTypeSwitch');
+        const priceHeaderCell = document.getElementById('priceHeaderCell');
+        if (priceTypeSelect && priceHeaderCell) {
+            originalSelectDisplay = priceTypeSelect.style.display;
+            priceTypeSelect.style.display = 'none';
+            const selectedText = priceTypeSelect.options[priceTypeSelect.selectedIndex].text;
+            tempSpan = document.createElement('span');
+            tempSpan.textContent = selectedText + '￥';
+            tempSpan.style.fontWeight = 'bold';
+            tempSpan.style.fontSize = '0.85rem';
+            priceHeaderCell.appendChild(tempSpan);
+        }
+
+        document.head.appendChild(style);
+        await new Promise(resolve => setTimeout(resolve, 20));
+
+        const rows = document.querySelectorAll('#quoteTableBody tr');
+        originalCells = [];
+
+        rows.forEach((row, idx) => {
+            // 列索引（0:序号,1:产品名,2:品牌,3:图片,4:配置,5:数量,6:单价,7:小计,8:备注,9:操作）
+            const configCell = row.cells[4];
+            const qtyCell = row.cells[5];
+            const priceCell = row.cells[6];
+            const remarkCell = row.cells[8];
+
+            originalCells[idx] = {};
+
+            // 配置列转纯文本
+            if (configCell) {
+                const configDiv = configCell.querySelector('.config-editable');
+                if (configDiv) {
+                    originalCells[idx].config = configDiv.cloneNode(true);
+                    const span = document.createElement('span');
+                    span.textContent = configDiv.innerText;
+                    span.style.whiteSpace = 'pre-wrap';
+                    span.style.textAlign = 'left';
+                    span.style.display = 'block';
+                    span.style.padding = '6px';
+                    configCell.innerHTML = '';
+                    configCell.appendChild(span);
+                }
+            }
+
+            // 数量列转纯文本
+            if (qtyCell) {
+                const qtyInput = qtyCell.querySelector('.qty-input');
+                if (qtyInput) {
+                    originalCells[idx].qty = qtyInput.cloneNode(true);
+                    const span = document.createElement('span');
+                    span.textContent = qtyInput.value;
+                    span.style.display = 'inline-block';
+                    span.style.textAlign = 'center';
+                    span.style.minWidth = '40px';
+                    qtyCell.innerHTML = '';
+                    qtyCell.appendChild(span);
+                }
+            }
+
+            // 价格列转纯文本
+            if (priceCell) {
+                let priceInput = priceCell.querySelector('.price-input');
+                if (!priceInput) priceInput = priceCell.querySelector('input[type="number"]');
+                if (priceInput) {
+                    originalCells[idx].price = priceInput.cloneNode(true);
+                    let priceValue = parseFloat(priceInput.value);
+                    if (isNaN(priceValue)) priceValue = 0;
+                    const span = document.createElement('span');
+                    span.textContent = priceValue.toFixed(2);
+                    span.style.display = 'inline-block';
+                    span.style.textAlign = 'center';
+                    span.style.minWidth = '70px';
+                    priceCell.innerHTML = '';
+                    priceCell.appendChild(span);
+                } else {
+                    console.warn(`第${idx+1}行价格列未找到输入框`, priceCell);
+                }
+            }
+
+            // 备注列转纯文本
+            if (remarkCell) {
+                const remarkDiv = remarkCell.querySelector('.remark-editable');
+                if (remarkDiv) {
+                    originalCells[idx].remark = remarkDiv.cloneNode(true);
+                    const span = document.createElement('span');
+                    span.textContent = remarkDiv.innerText;
+                    span.style.whiteSpace = 'pre-wrap';
+                    span.style.textAlign = 'left';
+                    span.style.display = 'block';
+                    span.style.padding = '6px';
+                    remarkCell.innerHTML = '';
+                    remarkCell.appendChild(span);
+                }
+            }
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 20));
+
+        // 调用 html2canvas，增加错误捕获
+        const canvas = await html2canvas(element, {
+            scale: 3,
+            backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true,
+            onclone: (clonedDoc, element) => {
+                // 可选：在克隆的文档中做额外处理
+            }
+        });
+
+        // 恢复原始内容
+        rows.forEach((row, idx) => {
+            const configCell = row.cells[4];
+            const qtyCell = row.cells[5];
+            const priceCell = row.cells[6];
+            const remarkCell = row.cells[8];
+
+            if (configCell && originalCells[idx] && originalCells[idx].config) {
+                configCell.innerHTML = '';
+                configCell.appendChild(originalCells[idx].config);
+            }
+            if (qtyCell && originalCells[idx] && originalCells[idx].qty) {
+                qtyCell.innerHTML = '';
+                qtyCell.appendChild(originalCells[idx].qty);
+            }
+            if (priceCell && originalCells[idx] && originalCells[idx].price) {
+                priceCell.innerHTML = '';
+                priceCell.appendChild(originalCells[idx].price);
+            }
+            if (remarkCell && originalCells[idx] && originalCells[idx].remark) {
+                remarkCell.innerHTML = '';
+                remarkCell.appendChild(originalCells[idx].remark);
+            }
+        });
+
+        // 恢复表头下拉框
+        if (priceTypeSelect && priceHeaderCell) {
+            priceTypeSelect.style.display = originalSelectDisplay || '';
+            if (tempSpan && tempSpan.parentNode) tempSpan.parentNode.removeChild(tempSpan);
+        }
+
+        if (style && style.parentNode) style.parentNode.removeChild(style);
+        if (overlay) overlay.style.display = '';
+
+        // 下载图片
+        let customerName = document.getElementById('customerName').innerText.trim();
+        if (!customerName) customerName = '未命名客户';
+        customerName = customerName.replace(/[\\/:*?"<>|]/g, '_');
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+        const fileName = `${customerName}_${timestamp}.png`;
+
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } catch (error) {
+        console.error('截图失败:', error);
+        alert('保存图片失败，请重试。错误信息：' + (error.message || error));
+        // 恢复原始内容（如果出错，确保页面恢复到可编辑状态）
+        const rows = document.querySelectorAll('#quoteTableBody tr');
+        rows.forEach((row, idx) => {
+            const configCell = row.cells[4];
+            const qtyCell = row.cells[5];
+            const priceCell = row.cells[6];
+            const remarkCell = row.cells[8];
+
+            if (configCell && originalCells[idx] && originalCells[idx].config) {
+                configCell.innerHTML = '';
+                configCell.appendChild(originalCells[idx].config);
+            }
+            if (qtyCell && originalCells[idx] && originalCells[idx].qty) {
+                qtyCell.innerHTML = '';
+                qtyCell.appendChild(originalCells[idx].qty);
+            }
+            if (priceCell && originalCells[idx] && originalCells[idx].price) {
+                priceCell.innerHTML = '';
+                priceCell.appendChild(originalCells[idx].price);
+            }
+            if (remarkCell && originalCells[idx] && originalCells[idx].remark) {
+                remarkCell.innerHTML = '';
+                remarkCell.appendChild(originalCells[idx].remark);
+            }
+        });
+        if (priceTypeSelect && priceHeaderCell) {
+            priceTypeSelect.style.display = originalSelectDisplay || '';
+            if (tempSpan && tempSpan.parentNode) tempSpan.parentNode.removeChild(tempSpan);
+        }
+        if (style && style.parentNode) style.parentNode.removeChild(style);
+        const overlay = document.querySelector('.sidebar-overlay');
+        if (overlay) overlay.style.display = '';
+    }
+}
+    async function saveCurrentQuoteSilent() {
+        if (!quoteRows || quoteRows.length === 0) {
+            return;
+        }
+    try {
+        const data = getCurrentQuoteData();
+        let customerName = data.customerName.trim();
+        if (!customerName) customerName = '未命名客户';
+        customerName = customerName.replace(/[\\/:*?"<>|]/g, '_');
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+        const fileName = `${customerName}_${timestamp}`;
+        await saveQuotationToDB(data, fileName);
+        // 不弹窗
+    } catch (err) {
+        console.error('保存失败', err);
+        // 静默失败，不打断截图
+    }
+}
+
+   function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+        });
+    }
+
+    // ==================== 初始化 ====================
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            await openDB();
+            products = await getAllProducts();
+            renderProductSelector();
+            // 不自动加载任何报价单，保持空白状态
+            quoteRows = [];
+            nextRowId = 1;
+            // 设置当前日期
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+            const dateStr = `日期：${year}年${month}月${day}日`;
+            const quoteDateEl = document.getElementById('quoteDate');
+            document.getElementById('priceTypeSwitch').value = currentPriceType;
+            if (quoteDateEl) quoteDateEl.innerText = dateStr;
+            
+            renderQuoteTable();
+        } catch (err) {
+            console.error(err);
+            alert(`初始化失败: ${err.message}`);
+            return;
+        }
+
+        // 按钮事件
+        document.getElementById('exportFullDataBtn').addEventListener('click', exportFullData);
+        document.getElementById('importFullDataBtn').addEventListener('click', importFullData);
+        document.getElementById('saveQuoteBtn').addEventListener('click', saveCurrentQuote);
+        document.getElementById('loadQuoteBtn').addEventListener('click', loadQuoteFromList);
+        document.getElementById('resetQuoteBtn').addEventListener('click', resetQuote);
+        document.getElementById('saveAsImageBtn').addEventListener('click', saveAsImage);
+        document.getElementById('manageProductBtn').addEventListener('click', () => {
+            window.location.href = 'product-manager.html';
+        });
+        document.getElementById('remarkTemplateBtn').addEventListener('click', async () => {
+            const action = confirm('保存当前说明？\n（点击“确定”保存，点击“取消”加载历史说明）');
+            if (action) {
+                await saveCurrentRemark();
+            } else {
+                await loadRemarkFromList();
+            }
+        });
+
+        // 产品库按钮拖动功能
+        const dragBtn = document.getElementById('sidebarToggleBtn');
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        // 从 localStorage 恢复按钮位置
+        const savedLeft = localStorage.getItem('dragBtnLeft');
+        const savedTop = localStorage.getItem('dragBtnTop');
+        if (savedLeft !== null && savedTop !== null) {
+            dragBtn.style.left = savedLeft;
+            dragBtn.style.top = savedTop;
+        }
+
+        const contactPerson = document.getElementById('contactPerson');
+        if (contactPerson) {
+            contactPerson.setAttribute('contenteditable', 'true');
+            // 可选：设置一个空白占位符，方便点击
+            if (!contactPerson.innerText.trim()) {
+                contactPerson.innerText = '';
+            }
+        }
+
+        dragBtn.addEventListener('mousedown', (e) => {
+            // 只在左键拖动时生效
+            if (e.button !== 0) return;
+            isDragging = true;
+            // 计算鼠标相对于按钮左上角的偏移量
+            offsetX = e.clientX - dragBtn.offsetLeft;
+            offsetY = e.clientY - dragBtn.offsetTop;
+            dragBtn.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        productListDiv.addEventListener('click', (e) => {
+            const addBtn = e.target.closest('.add-btn');
+            if (addBtn) {
+                const prodId = parseInt(addBtn.dataset.id);
+                const product = products.find(p => p.id === prodId);
+                if (product) addProductToQuote(product);
+                closeSidebar();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let newLeft = e.clientX - offsetX;
+            let newTop = e.clientY - offsetY;
+            // 限制边界（可选，避免拖出屏幕）
+            const maxX = window.innerWidth - dragBtn.offsetWidth;
+            const maxY = window.innerHeight - dragBtn.offsetHeight;
+            newLeft = Math.min(Math.max(0, newLeft), maxX);
+            newTop = Math.min(Math.max(0, newTop), maxY);
+            dragBtn.style.left = newLeft + 'px';
+            dragBtn.style.top = newTop + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                dragBtn.style.cursor = 'move';
+                // 保存位置到 localStorage
+                localStorage.setItem('dragBtnLeft', dragBtn.style.left);
+                localStorage.setItem('dragBtnTop', dragBtn.style.top);
+            }
+        });
+
+        // 监听价格类型切换
+        document.getElementById('priceTypeSwitch').addEventListener('change', (e) => {
+        currentPriceType = e.target.value;
+        renderQuoteTable();
+        
+    });
+
+        // 可编辑字段自动保存（不再自动保存到数据库，只是临时状态，但为了保持交互，可以保存到内存）
+        // 如果希望每次修改自动保存到数据库，可调用 saveCurrentQuote，但那样会生成过多记录，不建议。
+        // 这里仅做提示，不自动保存。
+        const editableFields = ['companyName', 'companyDetails', 'quotationTitle', 'customerName', 'contactPerson', 'customerAddr', 'quotationRemark', 'quotePerson'];
+        editableFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('blur', () => {
+                // 可选：自动保存到内存，但不写入数据库
+                // 或者不自动保存，由用户手动点击保存按钮
+            });
+        });
+
+         // ==================== 悬浮按钮拖拽与展开 ====================
+        const floating = document.getElementById('floatingActions');
+        const toggleBtn = document.getElementById('floatingToggle');
+        const actionPanel = document.getElementById('actionButtons');
+
+        let isFloatingDragging = false;
+        let startX, startY, startLeft, startTop;
+
+        function loadFloatingPosition() {
+            const savedLeft = localStorage.getItem('floatingLeft');
+            const savedTop = localStorage.getItem('floatingTop');
+            if (savedLeft && savedTop) {
+                floating.style.left = savedLeft;
+                floating.style.top = savedTop;
+                floating.style.right = 'auto';
+                floating.style.bottom = 'auto';
+            }
+        }
+        loadFloatingPosition();
+
+        function saveFloatingPosition(left, top) {
+            localStorage.setItem('floatingLeft', left);
+            localStorage.setItem('floatingTop', top);
+        }
+
+        toggleBtn.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            isFloatingDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = floating.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            floating.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isFloatingDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+            const maxX = window.innerWidth - floating.offsetWidth;
+            const maxY = window.innerHeight - floating.offsetHeight;
+            newLeft = Math.min(Math.max(0, newLeft), maxX);
+            newTop = Math.min(Math.max(0, newTop), maxY);
+            floating.style.left = newLeft + 'px';
+            floating.style.top = newTop + 'px';
+            floating.style.right = 'auto';
+            floating.style.bottom = 'auto';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isFloatingDragging) {
+                isFloatingDragging = false;
+                floating.style.cursor = 'move';
+                document.body.style.userSelect = '';
+                const left = floating.style.left;
+                const top = floating.style.top;
+                if (left && top) saveFloatingPosition(left, top);
+            }
+        });
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            actionPanel.classList.toggle('show');
+        });
+
+        actionPanel.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    });
+
+   
+
+    // 获取所有产品（复用，若已有则无需重复）
+async function getAllProductsForExport() {
+    const db = await openDB();
+    const tx = db.transaction(PRODUCT_STORE, 'readonly');
+    const store = tx.objectStore(PRODUCT_STORE);
+    return new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// 获取所有报价单记录
+async function getAllQuotationsForExport() {
+    const db = await openDB();
+    const tx = db.transaction(QUOTE_STORE, 'readonly');
+    const store = tx.objectStore(QUOTE_STORE);
+    return new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+
+
+// 导出数据（根据选项）
+async function exportFullData() {
+    // 显示模态框让用户选择
+    const modal = document.getElementById('exportOptionsModal');
+    modal.style.display = 'flex';
+    const cancelBtn = document.getElementById('cancelExportBtn');
+    const confirmBtn = document.getElementById('confirmExportBtn');
+    const radioBoth = document.querySelector('input[value="both"]');
+    const radioProducts = document.querySelector('input[value="products"]');
+    const radioQuotations = document.querySelector('input[value="quotations"]');
+    
+    const closeModal = () => modal.style.display = 'none';
+    cancelBtn.onclick = closeModal;
+    confirmBtn.onclick = async () => {
+        closeModal();
+        try {
+            const exportType = document.querySelector('input[name="exportType"]:checked').value;
+            const exportData = {};
+            if (exportType === 'both' || exportType === 'products') {
+                const products = await getAllProductsForExport();
+                exportData.products = products;
+            }
+            if (exportType === 'both' || exportType === 'quotations') {
+                const quotations = await getAllQuotationsForExport();
+                exportData.quotations = quotations;
+            }
+            const jsonStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+            a.download = `quotation_data_${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('导出成功');
+        } catch (err) {
+            console.error(err);
+            alert('导出失败：' + err.message);
+        }
+    };
+}
+
+// 导入数据（自动识别内容）
+function importFullData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            try {
+                const imported = JSON.parse(ev.target.result);
+                if (typeof imported !== 'object' || imported === null) throw new Error('无效的数据格式');
+                
+                // 处理产品库
+                if (imported.products && Array.isArray(imported.products)) {
+                    if (confirm('发现产品库数据，导入将替换当前所有产品库，是否继续？')) {
+                        const db = await openDB();
+                        const tx = db.transaction(PRODUCT_STORE, 'readwrite');
+                        const store = tx.objectStore(PRODUCT_STORE);
+                        await new Promise((resolve, reject) => {
+                            const request = store.clear();
+                            request.onsuccess = () => resolve();
+                            request.onerror = () => reject(request.error);
+                        });
+                        for (const prod of imported.products) {
+                            const { id, ...productData } = prod;
+                            await addProduct(productData);
+                        }
+                        await loadProducts(); // 刷新侧边栏产品库
+                        alert('产品库导入成功');
+                    }
+                }
+                
+                // 处理历史报价
+                if (imported.quotations && Array.isArray(imported.quotations)) {
+                    if (confirm(`发现 ${imported.quotations.length} 条历史报价记录，是否追加到现有记录？`)) {
+                        const db = await openDB();
+                        const tx = db.transaction(QUOTE_STORE, 'readwrite');
+                        const store = tx.objectStore(QUOTE_STORE);
+                        for (const record of imported.quotations) {
+                            // 移除可能的 id 字段，让数据库自动生成
+                            const { id, ...recordData } = record;
+                            await new Promise((resolve, reject) => {
+                                const request = store.add(recordData);
+                                request.onsuccess = () => resolve();
+                                request.onerror = () => reject(request.error);
+                            });
+                        }
+                        alert('历史报价导入成功');
+                    }
+                }
+                
+                if (!imported.products && !imported.quotations) {
+                    alert('文件中未包含有效数据（产品库或历史报价）');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('导入失败：' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+        async function addProduct(product) {
+            const db = await openDB();
+            const tx = db.transaction(PRODUCT_STORE, 'readwrite');
+            const store = tx.objectStore(PRODUCT_STORE);
+            return new Promise((resolve, reject) => {
+                const request = store.add(product);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+</script>
+
+<!-- 导出数据选项模态框 -->
+<div id="exportOptionsModal" class="modal-overlay" style="display:none;">
+    <div class="modal-container" style="max-width: 400px;">
+        <h3>选择导出内容</h3>
+        <div style="margin: 20px 0;">
+            <label><input type="radio" name="exportType" value="both" checked> 产品库 + 历史报价</label><br>
+            <label><input type="radio" name="exportType" value="products"> 仅产品库</label><br>
+            <label><input type="radio" name="exportType" value="quotations"> 仅历史报价</label><br>
+        </div>
+        <div class="modal-actions">
+            <button id="cancelExportBtn" class="btn">取消</button>
+            <button id="confirmExportBtn" class="btn btn-primary">导出</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

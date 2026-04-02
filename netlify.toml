@@ -1,0 +1,17 @@
+[[redirects]]
+  from = "/quotation"
+  to = "/quotation.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/product-manager"
+  to = "/product-manager.html"
+  status = 200
+  force = true
+
+# 可选：通用规则（放在最后）
+[[redirects]]
+  from = "/*"
+  to = "/:path.html"
+  status = 200

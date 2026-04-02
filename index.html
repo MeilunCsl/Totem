@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>报价单工具 | tocs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0b2b40 0%, #1a4d5e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, 'Roboto', sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 动态粒子背景 (装饰) */
+        .bg-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255,255,240,0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatParticle 12s infinite ease-in-out;
+        }
+
+        @keyframes floatParticle {
+            0% {
+                transform: translateY(0) translateX(0) scale(1);
+                opacity: 0.4;
+            }
+            50% {
+                transform: translateY(-40px) translateX(20px) scale(1.2);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(0) translateX(0) scale(1);
+                opacity: 0.4;
+            }
+        }
+
+        /* 主卡片 */
+        .hero-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border-radius: 64px;
+            padding: 3rem 4rem;
+            text-align: center;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,240,0.3);
+            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            width: 90%;
+            max-width: 700px;
+        }
+
+        /* Logo 动画区 */
+        .logo-area {
+            margin-bottom: 2rem;
+        }
+
+        .quote-icon {
+            display: inline-block;
+            width: 120px;
+            height: 120px;
+            background: rgba(255,215,140,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            animation: pulseGlow 2s infinite alternate, rotateScale 3s infinite;
+            box-shadow: 0 0 20px rgba(255,200,100,0.4);
+        }
+
+        .quote-icon svg {
+            width: 70px;
+            height: 70px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+        }
+
+        @keyframes pulseGlow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255,200,100,0.4);
+                background: rgba(255,215,140,0.2);
+            }
+            100% {
+                box-shadow: 0 0 0 20px rgba(255,200,100,0);
+                background: rgba(255,225,160,0.35);
+            }
+        }
+
+        @keyframes rotateScale {
+            0% {
+                transform: rotate(0deg) scale(1);
+            }
+            50% {
+                transform: rotate(8deg) scale(1.05);
+            }
+            100% {
+                transform: rotate(0deg) scale(1);
+            }
+        }
+
+        h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFE6C7, #FFB347);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.25rem;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .sub {
+            font-size: 1.2rem;
+            color: #FFF2DF;
+            opacity: 0.9;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            border-bottom: 1px dashed rgba(255,220,150,0.5);
+            display: inline-block;
+            padding-bottom: 6px;
+        }
+
+        .countdown {
+            font-size: 1.1rem;
+            background: rgba(0,0,0,0.3);
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 40px;
+            color: #FFE1A0;
+            margin: 1rem 0 1.5rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn-manual {
+            display: inline-block;
+            background: linear-gradient(90deg, #F9A826, #F47C3C);
+            border: none;
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            border-radius: 60px;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+            margin-top: 0.5rem;
+            cursor: pointer;
+        }
+
+        .btn-manual:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            background: linear-gradient(90deg, #FFB347, #F9672E);
+        }
+
+        .footer-note {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: rgba(255,245,220,0.7);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 550px) {
+            .hero-card {
+                padding: 2rem 1.5rem;
+            }
+            h1 {
+                font-size: 2.2rem;
+            }
+            .quote-icon {
+                width: 90px;
+                height: 90px;
+            }
+            .quote-icon svg {
+                width: 50px;
+                height: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-particles" id="particles"></div>
+<div class="hero-card">
+    <div class="logo-area">
+        <div class="quote-icon">
+            <!-- 简洁的发票/报价单风格 SVG -->
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4H20V20H4V4Z" stroke="#FFD966" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,217,102,0.2)"/>
+                <path d="M8 8H16M8 12H14M8 16H12" stroke="#FFD966" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="18" cy="18" r="2" fill="#FFB347" stroke="white" stroke-width="1"/>
+                <path d="M19 18L20 19" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <h1>报价单 <span style="font-weight:600;">· tocs</span></h1>
+        <div class="sub">智能报价 · 快速生成</div>
+    </div>
+
+    <div class="countdown" id="countdownMsg">
+        ⚡ 正在跳转至报价单系统 <span id="seconds">3</span> 秒
+    </div>
+
+    <button class="btn-manual" id="manualBtn">📄 立即进入报价单</button>
+    <div class="footer-note">
+        tocs 报价单工具 | 数据存储于本地
+    </div>
+</div>
+
+<script>
+    (function() {
+        // 自动跳转倒计时
+        let seconds = 3;
+        const secSpan = document.getElementById('seconds');
+        const countdownDiv = document.getElementById('countdownMsg');
+        let timer = setInterval(() => {
+            seconds--;
+            if (secSpan) secSpan.innerText = seconds;
+            if (seconds <= 0) {
+                clearInterval(timer);
+                window.location.href = './quotation.html';
+            }
+        }, 1000);
+
+        // 手动跳转按钮
+        const manualBtn = document.getElementById('manualBtn');
+        if (manualBtn) {
+            manualBtn.addEventListener('click', () => {
+                clearInterval(timer);
+                window.location.href = './quotation.html';
+            });
+        }
+
+        // 生成动态粒子（装饰）
+        function createParticles() {
+            const container = document.getElementById('particles');
+            if (!container) return;
+            const particleCount = 30;
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                const size = Math.random() * 15 + 5;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                const duration = 10 + Math.random() * 15;
+                particle.style.animationDuration = duration + 's';
+                particle.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(particle);
+            }
+        }
+        createParticles();
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>产品库管理</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f1f5f9;
+            padding: 24px 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        h1 {
+            margin: 0;
+            color: #1e3a5f;
+        }
+        .btn-back {
+            background: #2c6e9e;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .add-product-form {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 16px;
+            align-items: center;
+            background: white;
+            border-radius: 28px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .form-field label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+        .form-field input,
+        .img-preview-area,
+        .action-buttons {
+            width: 100%;
+            box-sizing: border-box;
+            height: 70px;
+        }
+        .form-field input {
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 24px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: white;
+            white-space: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        .img-preview-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f9fafb;
+            border: 1px solid #cbd5e1;
+            border-radius: 24px;
+            padding: 10px 12px;
+        }
+        .img-preview {
+            width: 40px;
+            height: 40px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+        .btn-submit {
+            background: #1e3a5f;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .action-buttons .btn-submit {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 1000px) {
+            .add-product-form {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+        }
+        .card-img {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: #f8fafc;
+            padding: 12px;
+        }
+        .card-info {
+            padding: 16px;
+            border-top: 1px solid #eef2ff;
+        }
+        .card-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .card-description {
+            font-size: 0.9rem;
+            color: #4b5563;
+            margin-bottom: 8px;
+            line-height: 1.3;
+            overflow: hidden;          /* 隐藏溢出内容 */
+            text-overflow: ellipsis;   /* 超出显示省略号 */
+            white-space: nowrap;       /* 强制单行显示 */
+            word-break: break-word;     /* 长单词自动换行 */
+        }
+        .card-model {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+        .card-price {
+            color: #2c6e9e;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin: 10px 0;
+        }
+        .card-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .edit-btn, .delete-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .edit-btn {
+            background: #eef2ff;
+            color: #1e3a5f;
+        }
+        .delete-btn {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .empty-msg {
+            text-align: center;
+            padding: 60px;
+            color: #6c757d;
+        }
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-container h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        /* 按钮基础样式 */
+        .modal-actions .btn {
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+
+        /* 取消按钮悬停效果 */
+        .modal-actions .btn:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-1px);
+        }
+
+        /* 保存按钮（主按钮）样式 */
+        .modal-actions .btn-primary {
+            background-color: #1e3a5f;
+            color: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* 保存按钮悬停效果 */
+        .modal-actions .btn-primary:hover {
+            background-color: #2c6e9e;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 可选：点击时的效果 */
+        .modal-actions .btn:active {
+            transform: translateY(0);
+        }
+        .product-grid.compact-view {
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 10px;
+        }
+        .product-grid.compact-view .card-img {
+            height: 100px;
+            padding: 6px;
+        }
+        .product-grid.compact-view .card-info {
+            padding: 6px;
+        }
+        .product-grid.compact-view .card-name {
+            font-size: 0.8rem;
+        }
+        .product-grid.compact-view .card-description {
+            font-size: 0.7rem;
+            white-space: normal;
+            -webkit-line-clamp: 2;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            display: none;
+        }
+        .product-grid.compact-view .card-price {
+            font-size: 0.8rem;
+        }
+        .product-grid.compact-view .edit-btn,
+        .product-grid.compact-view .delete-btn {
+            padding: 3px 6px;
+            font-size: 0.65rem;
+        }
+        .form-field textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 24px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 70px;          /* 与单行输入框高度一致 */
+        box-sizing: border-box;
+    }
+    /* 模态框中的文本域样式 */
+        .modal-container .form-field textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 24px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 70px;           /* 与单行输入框高度一致，可调整 */
+            box-sizing: border-box;
+            white-space: pre-wrap;      /* 强制换行 */
+            word-wrap: break-word;
+        }
+        /* 隐藏所有滚动条，但保留滚动功能 */
+        * {
+            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        *::-webkit-scrollbar {
+            display: none;          /* Chrome/Safari/Opera */
+        }
+
+        /* 移动端适配（宽度 ≤ 768px） */
+@media (max-width: 768px) {
+    body {
+        padding: 16px 12px;
+    }
+    .container {
+        padding: 0;
+    }
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .header h1 {
+        font-size: 1.5rem;
+    }
+    .header div {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .btn-back {
+        padding: 6px 16px;
+        font-size: 0.85rem;
+    }
+
+    /* 添加产品表单改为垂直布局 */
+    .add-product-form {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+        padding: 16px;
+    }
+    .form-field {
+        min-width: 100%;
+    }
+    .form-field input,
+    .form-field textarea {
+        height: auto;
+        min-height: 40px;
+        font-size: 0.85rem;
+    }
+    .img-preview-area {
+        height: auto;
+        padding: 8px 12px;
+    }
+    .btn-submit {
+        height: 40px;
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+    .extra-actions {
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    .img-field {
+        width: 100%;
+    }
+    .action-buttons {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    .action-buttons .btn-submit {
+        flex: 1;
+        text-align: center;
+    }
+
+    /* 产品卡片网格 */
+    .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+    }
+    .product-card {
+        border-radius: 20px;
+    }
+    .card-img {
+        height: 140px;
+        padding: 8px;
+    }
+    .card-info {
+        padding: 12px;
+    }
+    .card-name {
+        font-size: 0.95rem;
+    }
+    .card-description {
+        font-size: 0.75rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .card-model {
+        font-size: 0.7rem;
+    }
+    .card-price {
+        font-size: 0.9rem;
+        margin: 6px 0;
+    }
+    .edit-btn, .delete-btn {
+        padding: 6px;
+        font-size: 0.7rem;
+    }
+
+    /* 紧凑视图调整 */
+    .product-grid.compact-view {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+    }
+    .product-grid.compact-view .card-img {
+        height: 90px;
+    }
+    .product-grid.compact-view .card-name {
+        font-size: 0.7rem;
+    }
+    .product-grid.compact-view .card-price {
+        font-size: 0.7rem;
+    }
+    .product-grid.compact-view .edit-btn,
+    .product-grid.compact-view .delete-btn {
+        padding: 4px;
+        font-size: 0.6rem;
+    }
+
+    /* 模态框（编辑产品） */
+    .modal-container {
+        width: 95%;
+        max-width: 95%;
+        padding: 16px;
+    }
+    .modal-container h3 {
+        font-size: 1.2rem;
+    }
+    .form-field input,
+    .form-field textarea {
+        font-size: 0.85rem;
+    }
+    .modal-actions .btn {
+        padding: 6px 16px;
+        font-size: 0.8rem;
+    }
+}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📦 产品库管理</h1>
+        <div>
+            <button id="exportProductsBtn" class="btn-back" style="background:#4a8cce;">📤 导出产品库</button>
+            <button id="importProductsBtn" class="btn-back" style="background:#4a8cce;">📥 导入产品库</button>
+            <button id="backToQuoteBtn" class="btn-back">← 返回报价单</button>
+        </div>
+    </div>
+
+    <div class="add-product-form">
+        <div class="form-field">
+            <label>产品名称 *</label>
+            <input type="text" id="prodName" placeholder="例：智能办公椅">
+        </div>
+        <div class="form-field">
+            <label>品牌/型号</label>
+            <input type="text" id="prodModel" placeholder="品牌/型号">
+        </div>
+       <div class="form-field">
+            <label>产品描述</label>
+            <textarea id="prodDescription" rows="2" placeholder="产品详细描述" style="resize: vertical;"></textarea>
+        </div>
+        <div class="form-field">
+            <label>含税单价 (¥)</label>
+            <input type="number" id="prodPrice" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-field img-field">
+            <label>产品图片</label>
+            <div class="img-preview-area">
+                <input type="file" id="prodImage" accept="image/*" style="display:none">
+                <button type="button" id="uploadBtn" class="btn-submit">📷 上传图片</button>
+                <img id="previewImg" class="img-preview" style="display:none;">
+            </div>
+        </div>
+        <div class="form-field action-field">
+            <label>操作</label>
+            <div class="action-buttons">
+                <button id="toggleViewBtn" class="btn-submit">🔍 切换缩略图模式</button>
+                <button class="btn-submit" id="addProductBtn">➕ 添加产品</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="productList" class="product-grid"></div>
+</div>
+
+<!-- 编辑产品模态框 -->
+<div id="editModal" class="modal-overlay" style="display:none;">
+    <div class="modal-container">
+        <h3>✏️ 编辑产品</h3>
+        <div class="form-field">
+            <label>产品名称 *</label>
+            <input type="text" id="editProdName" placeholder="产品名称">
+        </div>
+        <div class="form-field">
+            <label>品牌/型号</label>
+            <input type="text" id="editProdModel" placeholder="品牌/型号">
+        </div>
+        <div class="form-field">
+            <label>产品描述</label>
+            <textarea id="editProdDescription" rows="2" placeholder="产品详细描述" style="resize: vertical;"></textarea>
+        </div>
+        <div class="form-field">
+            <label>含税单价 (¥)</label>
+            <input type="number" id="editProdPrice" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-field">
+            <label>产品图片</label>
+            <div class="img-preview-area">
+                <input type="file" id="editProdImage" accept="image/*" style="display:none">
+                <button type="button" id="editUploadBtn" style="background:#e2e8f0; border:none; padding:8px 16px; border-radius:40px;">📷 更换图片</button>
+                <img id="editPreviewImg" class="img-preview" style="display:none;">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button id="cancelEditBtn" class="btn">取消</button>
+            <button id="confirmEditBtn" class="btn btn-primary">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // IndexedDB 配置
+    const DB_NAME = 'QuotationDB';
+    const DB_VERSION = 8;  // 增加版本号，添加 description 字段
+    const PRODUCT_STORE = 'products';
+
+    let db = null;
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            if (db && db.name === DB_NAME) {
+                resolve(db);
+                return;
+            }
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = () => reject(new Error(`IndexedDB 打开失败: ${request.error?.message || '未知错误'}`));
+            request.onsuccess = () => {
+                db = request.result;
+                resolve(db);
+            };
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                // 创建产品库存储（如果不存在）
+                if (!db.objectStoreNames.contains(PRODUCT_STORE)) {
+                    db.createObjectStore(PRODUCT_STORE, { keyPath: 'id', autoIncrement: true });
+                }
+                // 创建报价单存储（如果不存在）
+                if (!db.objectStoreNames.contains(QUOTE_STORE)) {
+                    db.createObjectStore(QUOTE_STORE, { keyPath: 'id', autoIncrement: true });
+                }
+                // 不再添加任何示例数据
+            };
+        });
+    }
+
+    // 导出产品库
+    async function exportProducts() {
+        try {
+            const products = await getAllProducts();
+            const dataStr = JSON.stringify(products, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+            a.download = `products_${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        } catch (err) {
+            console.error('导出产品库失败:', err);
+            alert('导出失败：' + err.message);
+        }
+    }
+
+    // 导入产品库
+    async function importProducts() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const importedProducts = JSON.parse(ev.target.result);
+                    if (!Array.isArray(importedProducts)) throw new Error('无效的产品库数据，应为数组');
+                    if (!confirm('导入将替换当前所有产品库数据，是否继续？')) return;
+                    
+                    const db = await openDB();
+                    const tx = db.transaction(PRODUCT_STORE, 'readwrite');
+                    const store = tx.objectStore(PRODUCT_STORE);
+                    await new Promise((resolve, reject) => {
+                        const request = store.clear();
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                    
+                    for (const prod of importedProducts) {
+                        const { id, ...productData } = prod;
+                        if (!productData.description) productData.description = '';
+                        await addProduct(productData);
+                    }
+                    await loadAndRenderProducts();
+                    alert('产品库导入成功');
+                } catch (err) {
+                    console.error('导入产品库失败:', err);
+                    alert('导入失败：' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    async function getAllProducts() {
+        const db = await openDB();
+        const tx = db.transaction(PRODUCT_STORE, 'readonly');
+        const store = tx.objectStore(PRODUCT_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function addProduct(product) {
+        const db = await openDB();
+        const tx = db.transaction(PRODUCT_STORE, 'readwrite');
+        const store = tx.objectStore(PRODUCT_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.add(product);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function updateProduct(product) {
+        const db = await openDB();
+        const tx = db.transaction(PRODUCT_STORE, 'readwrite');
+        const store = tx.objectStore(PRODUCT_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.put(product);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function deleteProduct(id) {
+        const db = await openDB();
+        const tx = db.transaction(PRODUCT_STORE, 'readwrite');
+        const store = tx.objectStore(PRODUCT_STORE);
+        return new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    let products = [];
+
+    async function loadAndRenderProducts() {
+        products = await getAllProducts();
+        renderProducts();
+    }
+
+    function renderProducts() {
+        const container = document.getElementById('productList');
+        if (!products.length) {
+            container.innerHTML = '<div class="empty-msg">暂无产品，请添加</div>';
+            return;
+        }
+        container.innerHTML = products.map(prod => `
+            <div class="product-card" data-id="${prod.id}">
+                <img class="card-img" src="${prod.imageBase64 || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%23e2e8f0\'/%3E%3Ctext x=\'50\' y=\'55\' font-size=\'40\' text-anchor=\'middle\' fill=\'gray\'%3E📷%3C/text%3E%3C/svg%3E'}" alt="图片">
+                <div class="card-info">
+                    <div class="card-name">${escapeHtml(prod.name)}</div>
+                    <div class="card-description">${escapeHtml(prod.description || '')}</div>
+                    <div class="card-model">${escapeHtml(prod.model || '无型号')}</div>
+                    <div class="card-price">¥ ${Number(prod.price).toFixed(2)}</div>
+                    <div class="card-actions">
+                        <button class="edit-btn" data-id="${prod.id}">✏️ 编辑</button>
+                        <button class="delete-btn" data-id="${prod.id}">🗑️ 删除</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = parseInt(btn.dataset.id);
+                const product = products.find(p => p.id === id);
+                if (product) openEditModal(product);
+            });
+        });
+
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = parseInt(btn.dataset.id);
+                if (confirm('确定删除该产品？')) {
+                    await deleteProduct(id);
+                    await loadAndRenderProducts();
+                }
+            });
+        });
+    }
+
+    // 切换视图按钮
+    const toggleBtn = document.getElementById('toggleViewBtn');
+    const productGrid = document.getElementById('productList');
+    toggleBtn.addEventListener('click', () => {
+        productGrid.classList.toggle('compact-view');
+        if (productGrid.classList.contains('compact-view')) {
+            toggleBtn.textContent = '🔍 恢复原始大小';
+        } else {
+            toggleBtn.textContent = '🔍 切换缩略图模式';
+        }
+    });
+
+    // ==================== 编辑模态框逻辑 ====================
+let currentEditProduct = null;
+let isEditDirty = false;               // 标记编辑内容是否被修改
+
+function openEditModal(product) {
+    currentEditProduct = product;
+    document.getElementById('editProdName').value = product.name;
+    document.getElementById('editProdModel').value = product.model || '';
+    document.getElementById('editProdDescription').value = product.description || '';
+    document.getElementById('editProdPrice').value = product.price;
+    const preview = document.getElementById('editPreviewImg');
+    if (product.imageBase64) {
+        preview.src = product.imageBase64;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+    document.getElementById('editModal').style.display = 'flex';
+    isEditDirty = false;               // 每次打开时重置脏标记
+}
+
+function closeEditModal() {
+    if (isEditDirty) {
+        const confirm = window.confirm('您有未保存的修改，确定放弃吗？');
+        if (!confirm) return;
+    }
+    document.getElementById('editModal').style.display = 'none';
+    currentEditProduct = null;
+    document.getElementById('editProdImage').value = '';
+    isEditDirty = false;
+}
+
+async function saveEditProduct() {
+    if (!currentEditProduct) return;
+    const newName = document.getElementById('editProdName').value.trim();
+    const newModel = document.getElementById('editProdModel').value.trim();
+    const newDescription = document.getElementById('editProdDescription').value.trim();
+    const newPrice = parseFloat(document.getElementById('editProdPrice').value);
+    if (!newName) { alert('产品名称不能为空'); return; }
+    if (isNaN(newPrice) || newPrice < 0) { alert('请输入有效单价'); return; }
+    
+    let newImageBase64 = currentEditProduct.imageBase64;
+    const fileInput = document.getElementById('editProdImage');
+    if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            newImageBase64 = ev.target.result;
+            currentEditProduct.name = newName;
+            currentEditProduct.model = newModel;
+            currentEditProduct.description = newDescription;
+            currentEditProduct.price = newPrice;
+            currentEditProduct.imageBase64 = newImageBase64;
+            await updateProduct(currentEditProduct);
+            await loadAndRenderProducts();
+            isEditDirty = false;
+            closeEditModal();
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    } else {
+        currentEditProduct.name = newName;
+        currentEditProduct.model = newModel;
+        currentEditProduct.description = newDescription;
+        currentEditProduct.price = newPrice;
+        await updateProduct(currentEditProduct);
+        await loadAndRenderProducts();
+        isEditDirty = false;
+        closeEditModal();
+    }
+}
+
+
+    async function handleAddProduct() {
+        const name = document.getElementById('prodName').value.trim();
+        const model = document.getElementById('prodModel').value.trim();
+        const description = document.getElementById('prodDescription').value.trim();
+        const price = parseFloat(document.getElementById('prodPrice').value);
+        const preview = document.getElementById('previewImg');
+        if (!name) { alert('请填写产品名称'); return; }
+        if (isNaN(price) || price < 0) { alert('请输入有效单价'); return; }
+
+        let imageBase64 = preview.src && preview.style.display !== 'none' ? preview.src : '';
+        if (!imageBase64) {
+            imageBase64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e2e8f0'/%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' fill='gray'%3E📷%3C/text%3E%3C/svg%3E";
+        }
+
+        const newProduct = {
+            name: name,
+            model: model,
+            description: description,
+            price: price,
+            imageBase64: imageBase64
+        };
+        await addProduct(newProduct);
+        await loadAndRenderProducts();
+        document.getElementById('prodName').value = '';
+        document.getElementById('prodModel').value = '';
+        document.getElementById('prodDescription').value = '';
+        document.getElementById('prodPrice').value = '';
+        document.getElementById('prodImage').value = '';
+        document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('previewImg').src = '';
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // 初始化事件
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('uploadBtn').addEventListener('click', () => {
+            document.getElementById('prodImage').click();
+        });
+        document.getElementById('prodImage').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const preview = document.getElementById('previewImg');
+                    preview.src = ev.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        document.getElementById('exportProductsBtn').addEventListener('click', exportProducts);
+        document.getElementById('importProductsBtn').addEventListener('click', importProducts);
+        document.getElementById('addProductBtn').addEventListener('click', handleAddProduct);
+        document.getElementById('backToQuoteBtn').addEventListener('click', () => {
+            window.location.href = 'quotation.html';
+        });
+
+        document.getElementById('editUploadBtn').addEventListener('click', () => {
+            document.getElementById('editProdImage').click();
+        });
+        document.getElementById('editProdImage').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const preview = document.getElementById('editPreviewImg');
+                    preview.src = ev.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
+        document.getElementById('confirmEditBtn').addEventListener('click', saveEditProduct);
+        // 修改原有 overlay 点击事件，调用 closeEditModal（它内部已处理脏数据确认）
+        document.getElementById('editModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('editModal')) {
+                closeEditModal();   // 注意：closeEditModal 内部会检查 isEditDirty
+            }
+        });
+
+        openDB().then(async () => {
+            await loadAndRenderProducts();
+        }).catch(err => {
+            console.error(err);
+            alert(`数据库初始化失败: ${err.message}`);
+        });
+    });
+
+    // 键盘保护：当编辑模态框打开时，阻止可能导致页面离开或刷新的快捷键
+        let modalOpen = false;
+
+        // 监听模态框的显示/隐藏
+        const editModal = document.getElementById('editModal');
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'style') {
+                    modalOpen = editModal.style.display === 'flex';
+                }
+            });
+        });
+        observer.observe(editModal, { attributes: true });
+
+// 全局键盘事件拦截
+    window.addEventListener('keydown', (e) => {
+    if (!modalOpen) return; // 模态框未打开时，不拦截
+
+    // 阻止退格键（Backspace）导致页面后退
+    if (e.key === 'Backspace') {
+        // 如果当前焦点在输入框或文本域内，允许退格删除字符
+        const target = e.target;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+        if (!isInput) {
+            e.preventDefault();
+            return;
+        }
+    }
+
+    // 阻止 Ctrl+R / F5 刷新页面
+    if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+        e.preventDefault();
+        alert('编辑中，请勿刷新页面，以免丢失数据。');
+        return;
+    }
+
+    // 阻止 Alt + 左箭头 / 鼠标后退键（通常是 Alt+Left 或 BrowserBack）
+    if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        alert('编辑中，请勿使用后退按钮。');
+        return;
+    }
+
+
+
+    // 可选：阻止 ESC 关闭模态框（可根据需要决定）
+    // if (e.key === 'Escape') {
+    //     e.preventDefault();
+    //     alert('请点击“取消”或“保存”按钮关闭。');
+    //     return;
+    // }
+});
+
+</script>
+</body>
+</html>
