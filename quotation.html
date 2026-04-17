@@ -317,6 +317,13 @@
             renderProductSidebar();
         }
 
+        function generateDefaultFileName(customerName) {
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0,10); // YYYY-MM-DD
+        const timeStr = now.toTimeString().slice(0,8).replace(/:/g,'-'); // HH-MM-SS
+        const safeName = (customerName || '客户').replace(/[\\/:*?"<>|]/g, '_');
+        return `${safeName}_${dateStr}_${timeStr}`;
+    }
         function renderProductSidebar() {
             productListDiv.innerHTML = products.map(p => `
                 <div class="product-card">
@@ -445,6 +452,7 @@
             }
             try {
                 const data = getCurrentQuoteData();
+                
                 // 原有 IndexedDB 保存逻辑 预留接口 先不保存
                 //let cust = data.customerName.trim() || '未命名';
                 //cust = cust.replace(/[\\/:*?"<>|]/g, '_');
@@ -869,10 +877,12 @@ function toggleTotalVisibility() {
         // 下载图片
         const link = document.createElement('a');
         let cust = document.getElementById('customerName').innerText.trim() || '客户';
-        link.download = `${cust}_${new Date().toISOString().slice(0,10)}.png`;
+        cust = cust.replace(/[\\/:*?"<>|]/g, '_');
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+        link.download = `${cust}_${dateStr}.png`;
         link.href = finalCanvas.toDataURL('image/png');
         link.click();
-
     } finally {
         // 恢复原始样式和 DOM
         element.style.cssText = originalStyles.element;
@@ -909,7 +919,15 @@ function toggleTotalVisibility() {
 }
 
         async function saveCurrentQuoteSilent() {
-            try { await saveQuotationToDB(getCurrentQuoteData(), `auto_${Date.now()}`); } catch(e){}
+            try {
+                const data = getCurrentQuoteData();
+                let cust = data.customerName.trim() || '客户';
+                cust = cust.replace(/[\\/:*?"<>|]/g,'_');
+                const now = new Date();
+                const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+                const fileName = `${cust}_${dateStr}`;
+                await saveQuotationToDB(data, fileName);
+            } catch(e){}
         }
 
         // ---------- 公司管理 UI ----------
