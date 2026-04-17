@@ -370,18 +370,58 @@ body {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    margin-top: 20px;
+    margin-top: 1px;
     padding: 16px 8px;
     background: #f9fafb;
     border-radius: 20px;
     color: #000000; 
 }
+/* 让客户签章容器向左移动 */
+.quote-footer > div:last-child {
+    margin-right: 220px;  /* 根据需要调整数值，数值越大越靠左 */
+    /* 或者使用 padding-right: 30px; 效果类似 */
+}
+/* ========== 合计金额对齐表格列 ========== */
+.total-amount-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    margin-top: 0px;
+}
+
 .total-amount {
-    text-align: right;
+    display: flex;
+    width: 100%;
+    min-width: 1000px;          /* 与表格 min-width 保持一致 */
     font-weight: 800;
     font-size: 1.1rem;
-    margin: 8px 0;
-    color: #dd2121; 
+    color: #dd2121;
+    padding: 8px 0;
+    box-sizing: border-box;
+}
+
+/* 默认（编辑模式）10列表格下的宽度分配 */
+.total-label {
+    text-align: right;
+    /* 前7列宽度之和：序号(4%)+名称(11%)+型号(10%)+图片(10%)+描述(21%)+数量(5%)+单价(12%) = 73% */
+    width: 73%;
+    padding-right: 8px;
+}
+.total-value {
+    text-align: right;
+    /* 第8列小计宽度：9% */
+    width: 9%;
+    padding-right: 4px;
+}
+
+/* 预览模式：隐藏操作列（第10列），表格变为9列，重新计算宽度 */
+.quote-table.preview-mode ~ .total-amount-wrapper .total-label {
+    /* 前7列宽度比例相对变化：原73%是基于10列表格总宽，现在表格总宽变为 100% - 5%(隐藏列) = 95%，
+       因此前7列新宽度 = 73% / 0.95 ≈ 76.84% */
+    width: 76.84%;
+}
+.quote-table.preview-mode ~ .total-amount-wrapper .total-value {
+    /* 小计列宽度 = 9% / 0.95 ≈ 9.47% */
+    width: 9.47%;
 }
 
 /* 模态框 */
@@ -980,4 +1020,51 @@ body {
 .modal-container .btn-primary {
     background: #1e3a5f;
     color: white;
+}
+/* 报价单表头下拉框样式 */
+.price-select {
+    background: #4182d8 !important;      /* 与表头背景一致 */
+    color: white !important;             /* 文字白色 */
+    border: none !important;
+    font-weight: bold !important;
+    font-size: 16px !important;          /* 与表头文字大小一致 */
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    cursor: pointer;
+    outline: none;
+}
+
+.price-select option {
+    background: white !important;        /* 下拉选项背景白色 */
+    color: #000000 !important;           /* 选项文字黑色 */
+    font-weight: normal !important;
+}
+/* 预览模式：隐藏操作列（第10列） */
+.quote-table.preview-mode th:nth-child(10),
+.quote-table.preview-mode td:nth-child(10) {
+    display: none;
+}
+/* 描述列（第5列）左对齐 */
+.quote-table td:nth-child(5) {
+    text-align: left !important;
+}
+
+/* 备注列（第9列）左对齐 */
+.quote-table td:nth-child(9) {
+    text-align: left !important;
+}
+.quote-table tfoot td {
+    background: #f8fafc !important;
+    font-weight: bold;
+    border: 1px solid #cbd5e1;
+    padding: 8px 4px;
+}
+
+/* 隐藏合计金额控制 */
+.hide-total .total-amount-wrapper {
+    display: none !important;
+}
+#quoteDate {
+    color: #000000 !important;
+    font-weight: 700 !important;
 }

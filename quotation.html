@@ -29,6 +29,8 @@
             <button class="btn" id="sidebarToggleBtn">📦产品库</button>
             <button class="btn" id="manageProductBtn">✏️产品管理</button>
             <button class="btn btn-primary" id="saveAsImageBtn">📸导出图片</button>
+            <button class="btn btn-outline" id="previewModeBtn">👁️ 预览模式</button>
+            <button class="btn btn-outline" id="toggleTotalBtn">👁️ 隐藏合计</button>
             <button class="btn btn-outline" id="saveQuoteBtn">💾保存当前报价</button>
             <button class="btn btn-outline" id="loadQuoteBtn">📂历史报价单</button>
             <button class="btn btn-outline" id="exportFullDataBtn">📤导出全部</button>
@@ -67,7 +69,10 @@
                 <div class="customer-row"><span class="customer-label">客户名称：</span><span contenteditable="true" id="customerName" class="customer-value"></span></div>
                 <div class="customer-row" style="justify-content: space-between;">
                     <div><span class="customer-label">联  系  人：   </span><span contenteditable="true" id="contactPerson" class="customer-value"></span></div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="font-weight: 700; color: #000000;">日期:</span>
                     <span contenteditable="true" id="quoteDate" style="color:#334155;"></span>
+                </div>
                 </div>
                 <div class="customer-row"><span class="customer-label">地       址：</span><span contenteditable="true" id="customerAddr" class="customer-value"></span></div>
                 <div style="margin:12px 0 4px; font-style:italic;">感谢您对本公司的信任，以下是我们为您提供的报价：</div>
@@ -80,10 +85,10 @@
                         <tr>
                             <th>序号</th><th>产品名称</th><th>品牌/型号</th><th>图片</th><th>描述</th><th>数量</th>
                             <th id="priceHeaderCell">
-                                <select id="priceTypeSwitch" style="background:transparent; color:white; border:none; font-weight:bold;">
-                                    <option value="tax">含税单价</option>
-                                    <option value="noTax">未税单价</option>
-                                </select>
+                               <select id="priceTypeSwitch" class="price-select">
+                                <option value="tax">含税单价</option>
+                                <option value="noTax">未税单价</option>
+                            </select>
                             </th>
                             <th>小计(¥)</th><th>备注</th><th></th>
                         </tr>
@@ -91,7 +96,12 @@
                     <tbody id="quoteTableBody"></tbody>
                 </table>
             </div>
-            <div class="total-amount">合计金额：¥ <span id="totalAmount">0.00</span></div>
+           <div class="total-amount-wrapper">
+            <div class="total-amount">
+                <span class="total-label">合计金额：</span>
+                <span class="total-value">¥ <span id="totalAmount">0.00</span></span>
+            </div>
+        </div>
 
             <!-- 报价说明 & 签章 -->
             <div class="quote-footer" style="display: block; background: #f9fafb; padding: 16px;">
@@ -193,6 +203,7 @@
         let companies = []; // 公司数据缓存
         let quoteRows = [];
         let nextRowId = 1;
+        let isTotalHidden = false;
 
         // ---------- 数据库核心 ----------
         function openDB() {
@@ -350,7 +361,7 @@
                     <td>${idx+1}</td><td><strong>${escapeHtml(row.productName)}</strong></td><td>${escapeHtml(row.brandModel)}</td>
                     <td><img class="product-img-large" src="${row.imageBase64||''}"></td>
                     <td><div contenteditable="true" class="config-editable" data-id="${row.rowId}">${escapeHtml(row.config).replace(/\n/g,'<br>')}</div></td>
-                    <td>${row.quantity}</td>
+                    <td><input type="number" class="qty-input" data-id="${row.rowId}" value="${row.quantity}" min="1" step="1" style="width:60px; text-align:center;"></td>
                     <td><input type="number" class="price-input" data-id="${row.rowId}" value="${price.toFixed(2)}" step="0.01"></td>
                     <td>${subtotal.toFixed(2)}</td>
                     <td><div contenteditable="true" class="remark-editable" data-id="${row.rowId}">${escapeHtml(row.remark).replace(/\n/g,'<br>')}</div></td>
@@ -369,6 +380,16 @@
                 quoteRows = quoteRows.filter(r => r.rowId !== parseInt(b.dataset.id));
                 renderQuoteTable();
             }));
+            document.querySelectorAll('.qty-input').forEach(inp => inp.addEventListener('change', e => {
+                const row = quoteRows.find(r => r.rowId === parseInt(inp.dataset.id));
+                if (row) {
+                    let newQty = parseInt(inp.value) || 1;
+                    if (newQty < 1) newQty = 1;
+                    row.quantity = newQty;
+                    renderQuoteTable();
+                }
+            }));
+            
             updateTotal();
             // 自动更新草稿（仅在已存在草稿时更新，避免覆盖用户主动重置后的状态）
             
@@ -404,7 +425,7 @@
             document.getElementById('customerAddr').innerText = data.customerAddr || '';
             document.getElementById('quotationRemark').innerHTML = data.quotationRemark || '';
             document.getElementById('quotePerson').innerText = data.quotePerson || '';
-            document.getElementById('quoteDate').innerText = data.quoteDate || new Date().toLocaleDateString('zh-CN');
+            document.getElementById('quoteDate').innerText = data.quoteDate || `${new Date().getFullYear()}年${new Date().getMonth()+1}月${new Date().getDate()}日`;
             if (data.priceType) { currentPriceType = data.priceType; document.getElementById('priceTypeSwitch').value = currentPriceType; }
             quoteRows = (data.rows||[]).map(r => ({ ...r, taxPrice: r.taxPrice??r.unitPrice, noTaxPrice: r.noTaxPrice??r.unitPrice }));
             nextRowId = Math.max(0, ...quoteRows.map(r=>r.rowId), 0)+1;
@@ -499,6 +520,132 @@
             };
         }
 
+        // ---------- 预览模式功能 ----------
+let isPreviewMode = false;
+let previewBackups = [];
+
+function enterPreviewMode() {
+    if (isPreviewMode) return;
+    
+    const table = document.getElementById('quoteTable');
+    table.classList.add('preview-mode');
+
+   
+
+    const rows = [...document.querySelectorAll('#quoteTableBody tr')];
+    previewBackups = [];
+    
+    rows.forEach((row, i) => {
+        const backup = { cells: {} };
+        
+        // 描述列 (索引4)
+        const configCell = row.cells[4];
+        const configDiv = configCell.querySelector('.config-editable');
+        if (configDiv) {
+            backup.cells.config = configDiv.cloneNode(true);
+            configCell.innerHTML = `<span style="white-space:pre-wrap; text-align:left; display:block;">${configDiv.innerText}</span>`;
+        }
+        
+        // 数量列 (索引5) - 注意使用 .qty-input 类
+        const qtyCell = row.cells[5];
+        const qtyInput = qtyCell.querySelector('.qty-input');
+        if (qtyInput) {
+            backup.cells.qty = qtyInput.cloneNode(true);
+            qtyCell.innerHTML = `<span>${qtyInput.value}</span>`;
+        }
+        
+        // 单价列 (索引6)
+        const priceCell = row.cells[6];
+        const priceInput = priceCell.querySelector('.price-input');
+        if (priceInput) {
+            backup.cells.price = priceInput.cloneNode(true);
+            priceCell.innerHTML = `<span>${parseFloat(priceInput.value).toFixed(2)}</span>`;
+        }
+        
+        // 备注列 (索引8)
+        const remarkCell = row.cells[8];
+        const remarkDiv = remarkCell.querySelector('.remark-editable');
+        if (remarkDiv) {
+            backup.cells.remark = remarkDiv.cloneNode(true);
+            remarkCell.innerHTML = `<span style="white-space:pre-wrap; text-align:left; display:block;">${remarkDiv.innerText}</span>`;
+        }
+        
+        previewBackups.push({ row, backup });
+    });
+    
+    // 处理表头下拉框：显示为纯文本
+    const priceSelect = document.getElementById('priceTypeSwitch');
+    if (priceSelect) {
+        const headerCell = document.getElementById('priceHeaderCell');
+        headerCell.setAttribute('data-original-html', headerCell.innerHTML);
+        const selectedText = priceSelect.options[priceSelect.selectedIndex].text;
+        headerCell.innerHTML = `<span style="font-weight:bold;">${selectedText} ￥</span>`;
+    }
+    
+    isPreviewMode = true;
+    document.getElementById('previewModeBtn').textContent = '✏️ 退出预览';
+}
+
+function exitPreviewMode() {
+    if (!isPreviewMode) return;
+    
+    const table = document.getElementById('quoteTable');
+    table.classList.remove('preview-mode');
+    
+    // 恢复表格行
+    previewBackups.forEach(item => {
+        const row = item.row;
+        const backup = item.backup;
+        if (backup.cells.config) {
+            row.cells[4].innerHTML = '';
+            row.cells[4].appendChild(backup.cells.config);
+        }
+        if (backup.cells.qty) {
+            row.cells[5].innerHTML = '';
+            row.cells[5].appendChild(backup.cells.qty);
+        }
+        if (backup.cells.price) {
+            row.cells[6].innerHTML = '';
+            row.cells[6].appendChild(backup.cells.price);
+        }
+        if (backup.cells.remark) {
+            row.cells[8].innerHTML = '';
+            row.cells[8].appendChild(backup.cells.remark);
+        }
+    });
+    previewBackups = [];
+    
+    // 恢复表头下拉框
+    const headerCell = document.getElementById('priceHeaderCell');
+    const originalHtml = headerCell.getAttribute('data-original-html');
+    if (originalHtml) {
+        headerCell.innerHTML = originalHtml;
+    }
+    
+    isPreviewMode = false;
+    document.getElementById('previewModeBtn').textContent = '👁️ 预览模式';
+}
+
+function togglePreviewMode() {
+    if (isPreviewMode) {
+        exitPreviewMode();
+    } else {
+        if (quoteRows.length === 0) {
+            alert('暂无产品数据，无法预览');
+            return;
+        }
+        enterPreviewMode();
+    }
+}
+function toggleTotalVisibility() {
+    const totalWrapper = document.querySelector('.total-amount-wrapper');
+    if (!totalWrapper) return;
+    
+    isTotalHidden = !isTotalHidden;
+    totalWrapper.style.display = isTotalHidden ? 'none' : '';
+    document.getElementById('toggleTotalBtn').textContent = isTotalHidden ? '👁️ 显示合计' : '👁️ 隐藏合计';
+}
+
         // 截图A4
         async function saveAsImage() {
 
@@ -569,25 +716,40 @@
         height: 60px !important;
         object-fit: contain !important;
     }
+        
 
     /* ===== 字体大小控制 ===== */
     .company-name { font-size: 30px !important; margin: 2px 0 !important; }          /* 公司名称 */
-    .company-details { font-size: 13px !important; }                                 /* 1. 公司地址 */
-    .customer-info { font-size: 13px !important; }                                   /* 2. 客户信息整体 */
+    .company-details { font-size: 14px !important; }                                 /* 1. 公司地址 */
+    .customer-info { font-size: 14px !important; }                                   /* 2. 客户信息整体 */
     .customer-info div:first-of-type { font-size: 13px !important; }                 /* 3. 感谢语 */
     .quote-table th { font-size: 16px !important; }                                  /* 4. 表头 */
-    .quote-table td { font-size: 13px !important; }                                  /* 5. 表格普通内容 */
+   
+    .quote-table td { font-size: 14px !important; }                                  /* 5. 表格普通内容 */
     .config-editable, .remark-editable { font-size: 13px !important; }               /* 6. 表格描述列 & 备注列 */
-    .quote-footer { font-size: 13px !important; padding: 8px 0 !important; background: white !important; } /* 7. 报价说明及底部整体 */
-    #quotePerson { font-size: 13px !important; }                                     /* 8. 报价人 */
-    .quote-footer div:last-child { font-size: 13px !important; }                     /* 9. 客户签章 */
+    .quote-footer { font-size: 14px !important; padding: 8px 0 !important; background: white !important; } /* 7. 报价说明及底部整体 */
+    #quotePerson { font-size: 14px !important; }                                     /* 8. 报价人 */
+    .quote-footer div:last-child { font-size: 14px !important; }                     /* 9. 客户签章 */
+    .price-type-temp {
+    font-size: 16px !important;
+    color: white !important;
+    font-weight: bold !important;
+    }
     #quoteDate {
-    font-size: 13px !important;
-    color: #000000 !important;
-    font-weight: 700 !important;
-}                                       /* 10. 日期字体 */
+        font-size: 14px !important;
+        color: #000000 !important;
+        font-weight: 700 !important;
+    }                                       /* 10. 日期字体 */
+                                           /* 在临时样式末尾追加 */
+.hide-total .total-amount-wrapper {
+    display: none !important;
+}
+   
 
     /* 列宽分配（保证备注列足够宽） */
+    .quote-table td:nth-child(5) { text-align: left !important; }   /* 描述列 */
+    .quote-table td:nth-child(9) { text-align: left !important; }   /* 备注列 */
+    
     .quote-table th:nth-child(1), .quote-table td:nth-child(1) { width: 4%; }   /* 序号 */
     .quote-table th:nth-child(2), .quote-table td:nth-child(2) { width: 11%; }  /* 产品名称 */
     .quote-table th:nth-child(3), .quote-table td:nth-child(3) { width: 10%; }  /* 品牌/型号 */
@@ -604,19 +766,23 @@
     document.body.style.background = 'white';
     document.body.style.padding = '0';
     document.body.style.margin = '0';
+    
 
     // 处理价格类型下拉框：隐藏并显示纯文本
     const priceSelect = document.getElementById('priceTypeSwitch');
     const headerCell = document.getElementById('priceHeaderCell');
     let tempSpan = null;
     if (priceSelect) {
-        priceSelect.style.display = 'none';
-        tempSpan = document.createElement('span');
-        tempSpan.textContent = priceSelect.options[priceSelect.selectedIndex].text + ' ￥';
-        tempSpan.style.fontWeight = 'bold';
-        tempSpan.style.fontSize = '11px';
-        headerCell.appendChild(tempSpan);
-    }
+    priceSelect.style.display = 'none';
+    tempSpan = document.createElement('span');
+    tempSpan.className = 'price-type-temp';          // 👈 添加类名
+    tempSpan.textContent = priceSelect.options[priceSelect.selectedIndex].text + ' ￥';
+    tempSpan.style.fontWeight = 'bold';
+    // 不再设置 fontSize，交由 CSS 控制
+    headerCell.appendChild(tempSpan);
+}
+
+
 
     // 备份并替换表格中的可编辑元素（保证内容被正确渲染为纯文本）
     const rows = [...document.querySelectorAll('#quoteTableBody tr')];
@@ -838,7 +1004,7 @@
             await loadProducts();
             await loadCompanies(); // 加载公司数据
             
-            const today = new Date();
+           const today = new Date();
             document.getElementById('quoteDate').innerText = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
             renderQuoteTable();
 
@@ -861,6 +1027,7 @@
             };
             document.getElementById('saveAsImageBtn').onclick = saveAsImage;
             document.getElementById('exportFullDataBtn').onclick = exportFullData;
+            document.getElementById('previewModeBtn').addEventListener('click', togglePreviewMode);
 
              // 尝试恢复草稿
                 // 在 await loadCompanies(); 之后，绑定事件之前
@@ -878,6 +1045,21 @@
                         }
                     }
                 }, 30);
+
+                const toggleTotalBtn = document.getElementById('toggleTotalBtn');
+            const appWrapper = document.querySelector('.app-wrapper'); // 或使用 body
+
+            // 初始化：如果之前有保存状态（可选，此处忽略）
+            toggleTotalBtn.addEventListener('click', () => {
+                isTotalHidden = !isTotalHidden;
+                if (isTotalHidden) {
+                    appWrapper.classList.add('hide-total');
+                    toggleTotalBtn.textContent = '👁️ 显示合计';
+                } else {
+                    appWrapper.classList.remove('hide-total');
+                    toggleTotalBtn.textContent = '👁️ 隐藏合计';
+                }
+            });
             // 公司搜索框
             const companyInput = document.getElementById('companySearchInput');
             document.getElementById('clearCompanySearchBtn').addEventListener('click', ()=> { companyInput.value = ''; companyInput.focus(); });
