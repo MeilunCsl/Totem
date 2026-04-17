@@ -64,12 +64,12 @@
 
             <!-- 客户信息 -->
             <div class="customer-info">
-                <div class="customer-row"><span class="customer-label">客户名称：</span><span contenteditable="true" id="customerName" class="customer-value">示例客户</span></div>
+                <div class="customer-row"><span class="customer-label">客户名称：</span><span contenteditable="true" id="customerName" class="customer-value"></span></div>
                 <div class="customer-row" style="justify-content: space-between;">
-                    <div><span class="customer-label">联  系  人：   </span><span contenteditable="true" id="contactPerson" class="customer-value">王先生</span></div>
+                    <div><span class="customer-label">联  系  人：   </span><span contenteditable="true" id="contactPerson" class="customer-value"></span></div>
                     <span contenteditable="true" id="quoteDate" style="color:#334155;"></span>
                 </div>
-                <div class="customer-row"><span class="customer-label">地       址：</span><span contenteditable="true" id="customerAddr" class="customer-value">上海市浦东新区</span></div>
+                <div class="customer-row"><span class="customer-label">地       址：</span><span contenteditable="true" id="customerAddr" class="customer-value"></span></div>
                 <div style="margin:12px 0 4px; font-style:italic;">感谢您对本公司的信任，以下是我们为您提供的报价：</div>
             </div>
 
@@ -219,9 +219,7 @@
                 // 如果是首次创建（旧版本小于1或companies是新增的），添加预设数据
                 const presets = [
                     { name: "广州天冀图晟电子有限公司", contact: "梁小姐", phone: "13416314349", address: "广东省广州市番禺区市新路恒然创意园A座1209-1210" },
-                    { name: "上海宏达科技", contact: "王先生", phone: "13812345678", address: "上海市浦东新区张江高科技园区" },
-                    { name: "北京创新科技", contact: "李经理", phone: "13987654321", address: "北京市朝阳区建国路88号" },
-                    { name: "深圳迅捷网络", contact: "张女士", phone: "13611223344", address: "深圳市南山区科技园南区" },
+                    
                 ];
                 presets.forEach(c => companyStore.add(c));
             }
@@ -234,8 +232,8 @@
                 // 避免重复添加（如果已存在则跳过）
                 prodStore.count().onsuccess = (e) => {
                     if (e.target.result === 0) {
-                        prodStore.add({ name: "纸钞机", model: "NV10", description: "高速验钞", price: 1280, remark: "", imageBase64: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d9e3f0'/%3E%3Ctext x='50' y='55' font-size='38' text-anchor='middle' fill='%23365e7e'%3E💰%3C/text%3E%3C/svg%3E" });
-                        prodStore.add({ name: "点验钞机", model: "JBY-D2", description: "智能识别", price: 2150, remark: "", imageBase64: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23c8e6df'/%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' fill='%233d6b5e'%3E💵%3C/text%3E%3C/svg%3E" });
+                        prodStore.add({ name: "示例产品", model: "示例型号", description: "示例产品描述", price: 1280, remark: "示例备注", imageBase64: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d9e3f0'/%3E%3Ctext x='50' y='55' font-size='38' text-anchor='middle' fill='%23365e7e'%3E💰%3C/text%3E%3C/svg%3E" });
+                        
                     }
                 };
             }
@@ -372,6 +370,8 @@
                 renderQuoteTable();
             }));
             updateTotal();
+            // 自动更新草稿（仅在已存在草稿时更新，避免覆盖用户主动重置后的状态）
+            
         }
 
         function updateTotal() {
@@ -419,17 +419,24 @@
         // 保存当前报价
         async function saveCurrentQuote() {
             if (quoteRows.length === 0) {
-                    alert('报价单中没有产品，无法保存。请先添加产品。');
-                    return;
-                }
+                alert('报价单中没有产品，无法保存。请先添加产品。');
+                return;
+            }
             try {
                 const data = getCurrentQuoteData();
-                let cust = data.customerName.trim() || '未命名';
-                cust = cust.replace(/[\\/:*?"<>|]/g,'_');
-                const ts = new Date().toISOString().slice(0,19).replace(/[-:T]/g,'');
-                await saveQuotationToDB(data, `${cust}_${ts}`);
-                alert('报价已保存');
-            } catch(e) { alert('保存失败'); }
+                // 原有 IndexedDB 保存逻辑 预留接口 先不保存
+                //let cust = data.customerName.trim() || '未命名';
+                //cust = cust.replace(/[\\/:*?"<>|]/g, '_');
+                //const ts = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+                //await saveQuotationToDB(data, `${cust}_${ts}`);
+
+                // 新增：保存草稿到 sessionStorage
+                sessionStorage.setItem('quoteDraft', JSON.stringify(data));
+
+                alert('报价已保存，刷新页面或跳转后数据仍保留。');
+            } catch (e) {
+                alert('保存失败');
+            }
         }
 
         // 加载报价记录
@@ -464,7 +471,15 @@
         `;
             document.body.appendChild(modal);
             modal.querySelector('#closeLoadModal').onclick = ()=> { modal.remove(); isLoadModalOpen=false; };
-            modal.querySelectorAll('.btn-load').forEach(b => b.onclick = async ()=> { const data = await loadQuotationById(parseInt(b.dataset.id)); if(data) applyQuoteData(data); modal.remove(); isLoadModalOpen=false; });
+           modal.querySelectorAll('.btn-load').forEach(b => b.onclick = async () => {
+                const data = await loadQuotationById(parseInt(b.dataset.id));
+                if (data) {
+                    applyQuoteData(data);
+                    sessionStorage.setItem('quoteDraft', JSON.stringify(data));
+                }
+                modal.remove();
+                isLoadModalOpen = false;
+            });
             modal.querySelectorAll('.btn-delete').forEach(b => b.onclick = async ()=> { if(confirm('删除？')) { await deleteQuotationById(parseInt(b.dataset.id)); modal.remove(); isLoadModalOpen=false; loadQuoteFromList(); } });
         }
 
@@ -509,70 +524,80 @@
     const style = document.createElement('style');
     style.id = 'screenshot-zeropad';
     style.textContent = `
-        html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            width: 100% !important;
-            overflow: visible !important;
-        }
-        .app-wrapper, .quote-panel-card, .quote-table-wrapper {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            max-width: 100% !important;
-        }
-        #printArea {
-            padding: 16px 18px !important;
-            margin: 0 auto !important;
-            width: 100% !important;
-            max-width: 1200px !important;  /* 控制内容宽度，避免过宽 */
-            box-sizing: border-box !important;
-            background: white !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-        }
-        .quote-table {
-            width: 100% !important;
-            table-layout: fixed !important;
-            border-collapse: collapse !important;
-            margin: 0 !important;
-            font-size: 11px !important;
-        }
-        .quote-table th, .quote-table td {
-            padding: 4px 2px !important;
-            border: 1px solid #666 !important;
-        }
-        /* 隐藏操作列（第10列） */
-        .quote-table th:nth-child(10), .quote-table td:nth-child(10) {
-            display: none !important;
-        }
-        /* 图片大小 */
-        .product-img-large {
-            width: 60px !important;
-            height: 60px !important;
-            object-fit: contain !important;
-        }
-        /* 公司/标题样式 */
-        .company-name { font-size: 30px !important; margin: 2px 0 !important; }
-        .company-details { font-size: 12px !important; }
-        .quotation-title { font-size: 26px !important; margin: 4px 0 !important; }
-        .customer-info { font-size: 10px !important; margin: 4px 0 !important; }
-        .quote-footer { font-size: 10px !important; padding: 8px 0 !important; background: white !important; }
-        
-        /* 列宽分配（保证备注列足够宽） */
-        .quote-table th:nth-child(1), .quote-table td:nth-child(1) { width: 4%; }   /* 序号 */
-        .quote-table th:nth-child(2), .quote-table td:nth-child(2) { width: 11%; }  /* 产品名称 */
-        .quote-table th:nth-child(3), .quote-table td:nth-child(3) { width: 10%; }  /* 品牌/型号 */
-        .quote-table th:nth-child(4), .quote-table td:nth-child(4) { width: 10%; }  /* 图片 */
-        .quote-table th:nth-child(5), .quote-table td:nth-child(5) { width: 21%; }  /* 描述 */
-        .quote-table th:nth-child(6), .quote-table td:nth-child(6) { width: 5%; }   /* 数量 */
-        .quote-table th:nth-child(7), .quote-table td:nth-child(7) { width: 12%; }  /* 单价 */
-        .quote-table th:nth-child(8), .quote-table td:nth-child(8) { width: 9%; }   /* 小计 */
-        .quote-table th:nth-child(9), .quote-table td:nth-child(9) { width: 18%; }  /* 备注（加宽） */
-    `;
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+    .app-wrapper, .quote-panel-card, .quote-table-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+    }
+    #printArea {
+        padding: 16px 18px !important;
+        margin: 0 auto !important;
+        width: 100% !important;
+        max-width: 1200px !important;
+        box-sizing: border-box !important;
+        background: white !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+    .quote-table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        margin: 0 !important;
+    }
+    .quote-table th, .quote-table td {
+        padding: 4px 2px !important;
+        border: 1px solid #666 !important;
+    }
+    /* 隐藏操作列（第10列） */
+    .quote-table th:nth-child(10), .quote-table td:nth-child(10) {
+        display: none !important;
+    }
+    /* 图片大小 */
+    .product-img-large {
+        width: 60px !important;
+        height: 60px !important;
+        object-fit: contain !important;
+    }
+
+    /* ===== 字体大小控制 ===== */
+    .company-name { font-size: 30px !important; margin: 2px 0 !important; }          /* 公司名称 */
+    .company-details { font-size: 13px !important; }                                 /* 1. 公司地址 */
+    .customer-info { font-size: 13px !important; }                                   /* 2. 客户信息整体 */
+    .customer-info div:first-of-type { font-size: 13px !important; }                 /* 3. 感谢语 */
+    .quote-table th { font-size: 16px !important; }                                  /* 4. 表头 */
+    .quote-table td { font-size: 13px !important; }                                  /* 5. 表格普通内容 */
+    .config-editable, .remark-editable { font-size: 13px !important; }               /* 6. 表格描述列 & 备注列 */
+    .quote-footer { font-size: 13px !important; padding: 8px 0 !important; background: white !important; } /* 7. 报价说明及底部整体 */
+    #quotePerson { font-size: 13px !important; }                                     /* 8. 报价人 */
+    .quote-footer div:last-child { font-size: 13px !important; }                     /* 9. 客户签章 */
+    #quoteDate {
+    font-size: 13px !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
+}                                       /* 10. 日期字体 */
+
+    /* 列宽分配（保证备注列足够宽） */
+    .quote-table th:nth-child(1), .quote-table td:nth-child(1) { width: 4%; }   /* 序号 */
+    .quote-table th:nth-child(2), .quote-table td:nth-child(2) { width: 11%; }  /* 产品名称 */
+    .quote-table th:nth-child(3), .quote-table td:nth-child(3) { width: 10%; }  /* 品牌/型号 */
+    .quote-table th:nth-child(4), .quote-table td:nth-child(4) { width: 10%; }  /* 图片 */
+    .quote-table th:nth-child(5), .quote-table td:nth-child(5) { width: 21%; }  /* 描述 */
+    .quote-table th:nth-child(6), .quote-table td:nth-child(6) { width: 5%; }   /* 数量 */
+    .quote-table th:nth-child(7), .quote-table td:nth-child(7) { width: 12%; }  /* 单价 */
+    .quote-table th:nth-child(8), .quote-table td:nth-child(8) { width: 9%; }   /* 小计 */
+    .quote-table th:nth-child(9), .quote-table td:nth-child(9) { width: 18%; }  /* 备注（加宽） */
+`;
     document.head.appendChild(style);
 
     // 临时修改 body 样式
@@ -826,10 +851,33 @@
             document.getElementById('priceTypeSwitch').onchange = e => { currentPriceType = e.target.value; renderQuoteTable(); };
             document.getElementById('saveQuoteBtn').onclick = saveCurrentQuote;
             document.getElementById('loadQuoteBtn').onclick = loadQuoteFromList;
-            document.getElementById('resetQuoteBtn').onclick = ()=> { if(confirm('重置？')) { quoteRows=[]; nextRowId=1; renderQuoteTable(); }};
+            document.getElementById('resetQuoteBtn').onclick = () => {
+                if (confirm('重置当前报价单？未保存的数据将丢失。')) {
+                    quoteRows = [];
+                    nextRowId = 1;
+                    renderQuoteTable();
+                    sessionStorage.removeItem('quoteDraft'); // 清除草稿
+                }
+            };
             document.getElementById('saveAsImageBtn').onclick = saveAsImage;
             document.getElementById('exportFullDataBtn').onclick = exportFullData;
 
+             // 尝试恢复草稿
+                // 在 await loadCompanies(); 之后，绑定事件之前
+                // 在所有初始化操作完成后，延迟恢复草稿
+                setTimeout(() => {
+                    const draftJson = sessionStorage.getItem('quoteDraft');
+                    if (draftJson) {
+                        try {
+                            const draftData = JSON.parse(draftJson);
+                            applyQuoteData(draftData);
+                            console.log('✅ 已恢复报价草稿');
+                        } catch (e) {
+                            console.warn('草稿解析失败', e);
+                            sessionStorage.removeItem('quoteDraft');
+                        }
+                    }
+                }, 30);
             // 公司搜索框
             const companyInput = document.getElementById('companySearchInput');
             document.getElementById('clearCompanySearchBtn').addEventListener('click', ()=> { companyInput.value = ''; companyInput.focus(); });
